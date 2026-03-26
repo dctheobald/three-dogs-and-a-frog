@@ -43,6 +43,110 @@ A fully functional, full-stack e-commerce demonstration platform engineered for 
 
 ---
 
+## 🏗️ System Architecture
+
+The following diagram maps the dual lifecycles of the platform: the automated DevOps CI/CD deployment pipeline, and the end-user traffic flow through the secure checkout gateway.
+
+```mermaid
+graph TD
+%% --- Defining Nodes & Subgraphs ---
+
+    %% Developer Environment
+    subgraph DevEnv ["1. Developer Environment (Local Mac)"]
+        DevCode["Source Code: index.html, server.js, styles.css, etc."]
+        DevOS["MacBook Air"]
+    end
+
+    %% CI/CD Pipeline (GitHub)
+    subgraph CICDPipeline ["2. Automated Deployment Pipeline (GitHub)"]
+        GitHubRepo["GitHub Repository"]
+        GH_Secrets["GitHub Secrets (GCP_CREDENTIALS)"]
+        subgraph GHActions ["GitHub Actions Workflow (deploy.yml)"]
+            GHA_Auth["Step: Authenticate to GCP"]
+            GHA_Build["Step: Docker Build --platform linux/amd64"]
+            GHA_Push["Step: Docker Push Image"]
+            GHA_UpdateVM["Step: Trigger VM Update"]
+        end
+    end
+
+    %% Google Cloud Platform
+    subgraph GCP_Cloud ["3. Google Cloud Platform (Infrastructure)"]
+        GCP_Artifact["Artifact Registry"]
+        subgraph GCP_VM ["Compute Engine Instance (retail-vm)"]
+            GCP_COS["Container-Optimized OS"]
+            GCP_Metadata["VM Metadata (NODE_ENV=production, STRIPE_SECRET_KEY)"]
+            
+            subgraph DockerContainer ["Docker Container (retail-app:sha-xyz)"]
+                NodeServer["Node.js / Express Server"]
+                Greenlock["Greenlock-Express (SSL)"]
+                StaticFiles["Static Frontend Files"]
+                ServerLogic["Express.js API (Stripe Logic)"]
+            end
+        end
+    end
+
+    %% Third-Party Services
+    subgraph ThirdParty ["4. Third-Party Integrations"]
+        StripeAPI["Stripe Checkout API (Test Mode)"]
+        LetsEncrypt["Let's Encrypt (SSL Authority)"]
+    end
+
+    %% End User
+    subgraph EndUser ["5. End User Environment (Browser)"]
+        UserBrowser["Customer Browser (Mobile/Desktop)"]
+        UserCart["Browser LocalStorage"]
+    end
+
+
+%% --- Defining Flows & Connections ---
+
+    %% DevOps Flow
+    DevCode -->|"git push -u origin main"| GitHubRepo
+    GitHubRepo -->|"Triggers"| GHActions
+    GH_Secrets -->|"Injects Credentials"| GHA_Auth
+    GHA_Auth -->|"Authenticates"| GHA_Build
+    GHA_Build -->|"Pushes New Image"| GCP_Artifact
+    GHA_Push -->|"Pushes Image"| GCP_Artifact
+    GCP_Artifact -->|"Storage"| GCP_Artifact
+    GHA_UpdateVM -->|"Pulls Image / Restarts"| GCP_COS
+    GCP_COS -->|"Runs"| DockerContainer
+    GCP_Metadata -->|"Injects Env Vars"| DockerContainer
+
+    %% Static Website Traffic Flow
+    UserBrowser -->|"HTTPS 443 Request"| Greenlock
+    Greenlock -->|"Requests Certificate"| LetsEncrypt
+    LetsEncrypt -->|"Issues Certificate"| Greenlock
+    Greenlock -->|"Proxy Traffic"| NodeServer
+    NodeServer -->|"Serves"| StaticFiles
+    StaticFiles -->|"Renders UI"| UserBrowser
+    UserBrowser -->|"Saves Cart State"| UserCart
+
+    %% Checkout Traffic Flow
+    UserBrowser -->|"POST Checkout /cart"| ServerLogic
+    ServerLogic -->|"Calls sk_test_... Key"| StripeAPI
+    StripeAPI -->|"Returns Checkout URL"| ServerLogic
+    ServerLogic -->|"Redirects User"| UserBrowser
+    UserBrowser -->|"Completes Payment"| StripeAPI
+    StripeAPI -->|"Redirects back to success.html"| UserBrowser
+
+%% --- Styling ---
+    classDef dev fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef github fill:#d1e7dd,stroke:#198754,stroke-width:2px;
+    classDef gcp fill:#cfe2f3,stroke:#0d6efd,stroke-width:2px;
+    classDef 3rdparty fill:#f8d7da,stroke:#dc3545,stroke-width:2px;
+    classDef browser fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
+    classDef server fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
+
+    class DevCode,DevOS dev;
+    class GitHubRepo,GH_Secrets,GHActions,GHA_Auth,GHA_Build,GHA_Push,GHA_UpdateVM github;
+    class GCP_Cloud,GCP_Artifact,GCP_VM,GCP_COS,GCP_Metadata gcp;
+    class StripeAPI,LetsEncrypt 3rdparty;
+    class UserBrowser,UserCart browser;
+    class DockerContainer,NodeServer,Greenlock,ServerLogic,StaticFiles server;
+```
+
+---
+
 ## 💻 Local Development Setup
 
 To run this storefront locally, you will need Node.js and a Stripe Developer account (for test API keys).
