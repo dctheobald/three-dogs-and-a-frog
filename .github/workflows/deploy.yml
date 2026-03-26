@@ -1,10 +1,14 @@
 name: Deploy to Google Cloud
 
-# This tells GitHub to run this script every time you push to the 'main' branch
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'          # Ignores README.md and any other markdown files
+      - 'LICENSE'        # Ignores the license file
+      - '.gitignore'     # Ignores git configuration
+      - '.github/**'     # Ignores changes to the pipeline script itself
 
 jobs:
   build-and-deploy:
