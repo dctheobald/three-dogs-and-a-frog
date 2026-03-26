@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Gear | 3 Dogs and a Frog</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⛺</text></svg>">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="promo-bar">Free Shipping on Orders Over $99 | 1% For The Planet</div>
+    
+    <div class="menu-backdrop" id="menuBackdrop"></div>
+    <nav class="offcanvas-menu" id="offcanvasMenu">
+        <button class="close-menu" id="closeMenu" aria-label="Close Menu"><i class="bi bi-x-lg"></i></button>
+        <div class="menu-section">
+            <h4>Shop Gear</h4>
+            <ul><li><a href="/shop">All Products</a></li><li><a href="/shop">Dog Apparel</a></li><li><a href="/shop">Camp Gear</a></li><li><a href="/shop">Packs & Carriers</a></li></ul>
+        </div>
+        <div class="menu-section">
+            <h4>About 3 Dogs</h4>
+            <ul><li><a href="#">Our Story</a></li><li><a href="#">Environmental Impact</a></li></ul>
+        </div>
+        <div class="menu-section">
+            <h4>Customer Service</h4>
+            <ul><li><a href="#">Help Center</a></li><li><a href="#">Contact Us</a></li></ul>
+        </div>
+    </nav>
+    
+    <header>
+        <button class="hamburger-trigger" id="hamburgerTrigger" aria-label="Open Menu"><i class="bi bi-list"></i></button>
+        <div class="logo-container">
+            <a href="/"><img src="/images/logo.jpg" class="brand-logo" alt="3 Dogs and a Frog Logo"></a>
+        </div>
+        <div class="header-right">
+            <nav class="main-nav"><a href="/shop">Shop</a><a href="#">Stories</a></nav>
+            <a href="/cart" class="cart-icon-wrapper">
+                <i class="bi bi-bag"></i>
+                <span class="cart-count" id="headerCartCount">0</span>
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <div class="shop-container">
+            <aside class="shop-filters">
+                <h3>Categories</h3>
+                <div class="filter-group">
+                    <label><input type="checkbox" class="filter-cb category-cb" value="all" checked> All Gear</label>
+                    <label><input type="checkbox" class="filter-cb category-cb" value="apparel"> Dog Apparel</label>
+                    <label><input type="checkbox" class="filter-cb category-cb" value="camp"> Camp Gear</label>
+                    <label><input type="checkbox" class="filter-cb category-cb" value="packs"> Packs & Carriers</label>
+                </div>
+                <h3>Size</h3>
+                <div class="filter-group">
+                    <label><input type="checkbox" class="filter-cb size-cb" value="small"> Small</label>
+                    <label><input type="checkbox" class="filter-cb size-cb" value="medium"> Medium</label>
+                    <label><input type="checkbox" class="filter-cb size-cb" value="large"> Large / XL</label>
+                </div>
+            </aside>
+
+            <div class="shop-main">
+                <h1 style="margin-top: 0; margin-bottom: 2rem; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid #333; padding-bottom: 0.5rem;">Premium Pack Gear</h1>
+                
+                <div class="product-grid" id="shopProductGrid">
+                    
+                    <div class="product-card" data-id="1" data-name="Reflective Night Harness" data-price="45.99" data-image="/images/harness.jpg" data-category="apparel" data-size="medium">
+                        <div class="product-image-container"><img src="/images/harness.jpg" alt="Reflective Night Harness" class="product-image"></div>
+                        <div class="product-info">
+                            <span class="category">Dog Apparel</span>
+                            <h3>Reflective Night Harness</h3>
+                            <p class="price">$45.99</p>
+                            <button class="add-btn">Add to Bag</button>
+                        </div>
+                    </div>
+                
+                    <div class="product-card" data-id="2" data-name="Heavy-Duty Stainless Steel Basecamp Bowl" data-price="24.50" data-image="/images/bowl.jpg" data-category="camp" data-size="small">
+                        <div class="product-image-container"><img src="/images/bowl.jpg" alt="Heavy-Duty Stainless Steel Basecamp Bowl" class="product-image"></div>
+                        <div class="product-info">
+                            <span class="category">Camp Gear</span>
+                            <h3>Heavy-Duty Stainless Steel Basecamp Bowl</h3>
+                            <p class="price">$24.50</p>
+                            <button class="add-btn">Add to Bag</button>
+                        </div>
+                    </div>
+                
+                    <div class="product-card" data-id="3" data-name="High-Capacity Trail Backpack" data-price="65.00" data-image="/images/backpack.jpg" data-category="packs" data-size="large">
+                        <div class="product-image-container">
+                            <img src="/images/backpack.jpg" alt="High-Capacity Trail Backpack" class="product-image">
+                            <div class="frog-approved-badge badge-overlay">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 5 10 5 15C5 18.866 8.134 22 12 22C15.866 22 19 18.866 19 15C19 10 12 2 12 2ZM12 20C9.238 20 7 17.761 7 15C7 11.5 11.2 4.8 12 3.6C12.8 4.8 17 11.5 17 15C17 17.761 14.762 20 12 20Z"/></svg>
+                                <span>Frog-Tested Waterproof</span>
+                            </div>
+                        </div>
+                        <div class="product-info">
+                            <span class="category">Packs & Carriers</span>
+                            <h3>High-Capacity Trail Backpack</h3>
+                            <p class="price">$65.00</p>
+                            <button class="add-btn">Add to Bag</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col"><h4>Shop</h4><ul><li><a href="/shop">Dog Apparel</a></li><li><a href="/shop">Camp Gear</a></li><li><a href="/shop">Packs</a></li></ul></div>
+            <div class="footer-col"><h4>Customer Service</h4><ul><li><a href="#">Help Center</a></li><li><a href="#">Returns</a></li></ul></div>
+            <div class="footer-col"><h4>About Us</h4><ul><li><a href="#">Our Story</a></li><li><a href="#">Impact</a></li></ul></div>
+            <div class="footer-col"><h4>Stay Connected</h4><button style="background: transparent; color: white; border: 1px solid white; padding: 0.8rem 1.5rem; cursor: pointer; text-transform: uppercase; font-weight: bold; width: 100%; font-size: 0.9rem;">Sign Up</button></div>
+        </div>
+	<div class="footer-bottom"><p>&copy; 2026 3 Dogs and a Frog. | This is a demo storefront. No real products are sold.</p></div>
+    </footer>
+    <button id="frogChatBtn" class="frog-chat-btn" aria-label="Chat with the Guide">🐸</button>
+
+    <div id="frogChatWindow" class="frog-chat-window">
+        <div class="chat-header">
+            <span>The Wise Frog</span>
+            <button id="closeChatBtn">&times;</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message frog-msg">Ribbit. Welcome to basecamp. How can I guide your pack today?</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Ask the guide..." autocomplete="off">
+            <button id="sendChatBtn">Send</button>
+        </div>
+    </div>
+    <script src="/main.js"></script>
+</body>
+</html>

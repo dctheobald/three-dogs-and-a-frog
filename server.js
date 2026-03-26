@@ -1,52 +1,73 @@
+require('dotenv').config();
 const express = require('express');
+const path = require('path');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
 const app = express();
 
-// Cloud Engine typically defaults to port 8080 for Node apps
-const PORT = process.env.PORT || 8080; 
+// Middleware to serve static files and parse JSON data from the cart
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+app.use(express.json());
 
-// Mock product database
-const products = [
-    { id: 1, name: 'Sheepadoodle Reflective Harness', price: 45.99, category: 'Apparel' },
-    { id: 2, name: 'Bulldog Heavy-Duty Travel Bowl', price: 24.50, category: 'Gear' },
-    { id: 3, name: 'Bernedoodle Trail Backpack', price: 65.00, category: 'Packs' }
-];
+// --- STRIPE CHECKOUT ROUTE ---
+app.post('/create-checkout-session', async (req, res) => {
+    try {
+        const { cart } = req.body;
 
-// Serve the main retail storefront
-app.get('/', (req, res) => {
-    const productList = products.map(p => 
-        `<li><strong>${p.name}</strong> - $${p.price.toFixed(2)}</li>`
-    ).join('');
+        // Convert your cart items into the exact format Stripe requires
+        const lineItems = cart.map(item => {
+            return {
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: item.name,
+                        images: [`https://www.3dogsandafrog.com${item.image}`], // Stripe needs absolute URLs for images
+                    },
+                    unit_amount: Math.round(item.price * 100), // Stripe expects amounts in cents!
+                },
+                quantity: item.quantity,
+            };
+        });
 
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>3 Dogs and a Frog | Outdoor Gear for Your Pack</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
-                h1 { color: #2E7D32; }
-                .product-list { line-height: 1.8; }
-            </style>
-        </head>
-        <body>
-            <h1>Welcome to 3 Dogs and a Frog</h1>
-            <h2>Outdoor Gear for Your Pack</h2>
-            <p>Check out our latest arrivals below:</p>
-            <ul class="product-list">
-                ${productList}
-            </ul>
-        </body>
-        </html>
-    `);
+        // Determine the domain for the return URLs
+        const domain = process.env.NODE_ENV !== 'production' 
+            ? 'http://localhost:3000' 
+            : 'https://www.3dogsandafrog.com';
+
+        // Create the secure Stripe session
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'payment',
+            line_items: lineItems,
+            success_url: `${domain}/success`,
+            cancel_url: `${domain}/cart`,
+        });
+
+        // Send the Stripe URL back to the frontend
+        res.json({ url: session.url });
+    } catch (error) {
+        console.error("Stripe Error:", error);
+        res.status(500).json({ error: "Failed to create checkout session" });
+    }
 });
 
-// API endpoint to fetch products (useful later for frontend frameworks)
-app.get('/api/products', (req, res) => {
-    res.json(products);
-});
+// 2. CHECK ENVIRONMENT: Local vs Production
+const isLocal = process.env.NODE_ENV !== 'production';
 
-// Start the server
-app.listen(PORT, () => {
-    console.log(\`Retail storefront is running on port \${PORT}\`);
-});
+if (isLocal) {
+    // If running locally on your Mac, use standard Express on port 3000
+    const PORT = 3000;
+    app.listen(PORT, () => {
+        console.log(`🏕️ 3 Dogs and a Frog local server running at http://localhost:${PORT}`);
+    });
+} else {
+    // If running on Google Cloud, wrap Express in Greenlock for SSL
+    require('greenlock-express')
+        .init({
+            packageRoot: __dirname,
+            configDir: './greenlock.d',
+            maintainerEmail: 'dctheobald@gmail.com', // Your Let's Encrypt recovery email
+            cluster: false
+        })
+        .serve(app);
+}

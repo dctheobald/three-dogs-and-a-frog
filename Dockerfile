@@ -3,5 +3,5 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install --only=production
 COPY . .
-EXPOSE 8080
+EXPOSE 80 443
 CMD [ "node", "server.js" ]

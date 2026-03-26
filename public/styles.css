@@ -1,0 +1,116 @@
+:root {
+    --patagonia-navy: #1A2432;
+    --patagonia-charcoal: #333333;
+    --patagonia-light-gray: #F5F5F5;
+    --patagonia-border: #E5E5E5;
+    --patagonia-accent: #8C2131;
+    --brand-frog-accent: #00E676; /* The new Poison Dart green */
+    --white: #FFFFFF;
+}
+
+body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: var(--white); color: var(--patagonia-charcoal); -webkit-font-smoothing: antialiased; overflow-x: hidden; display: flex; flex-direction: column; min-height: 100vh; }
+main { flex-grow: 1; }
+
+/* --- Headers & Navigation --- */
+.promo-bar { background-color: var(--patagonia-navy); color: var(--white); text-align: center; padding: 0.6rem 1rem; font-size: 0.8rem; letter-spacing: 0.05em; font-weight: bold; text-transform: uppercase; }
+header { border-bottom: 1px solid var(--patagonia-border); background-color: var(--white); padding: 1rem 2rem; display: flex; align-items: center; justify-content: flex-start; gap: 1rem; position: sticky; top: 0; z-index: 1000; }
+.hamburger-trigger { background: none; border: none; font-size: 1.8rem; cursor: pointer; color: var(--patagonia-charcoal); padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; min-width: 40px; }
+.logo-container { display: flex; align-items: center; }
+.brand-logo { height: 120px; width: auto; display: block; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 2.5rem; }
+nav.main-nav { display: flex; gap: 2rem; }
+nav.main-nav a { text-decoration: none; color: var(--patagonia-charcoal); font-weight: 700; font-size: 0.95rem; text-transform: uppercase; transition: color 0.2s; }
+nav.main-nav a:hover { color: var(--patagonia-accent); text-decoration: underline; }
+
+/* --- Cart Icon --- */
+.cart-icon-wrapper { position: relative; color: var(--patagonia-charcoal); font-size: 1.5rem; text-decoration: none; transition: transform 0.2s; display: flex; align-items: center; }
+.cart-icon-wrapper:hover { transform: scale(1.05); color: var(--patagonia-accent); }
+.cart-count { position: absolute; top: -8px; right: -12px; background-color: var(--patagonia-accent); color: white; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 50%; }
+
+/* --- Offcanvas Menu --- */
+.offcanvas-menu { position: fixed; top: 0; left: -100%; width: 320px; height: 100vh; background-color: var(--white); z-index: 2000; padding: 2.5rem 2rem; box-shadow: 6px 0 15px rgba(0,0,0,0.1); transition: left 0.3s ease-in-out, visibility 0.3s ease-in-out; display: flex; flex-direction: column; overflow-y: auto; visibility: hidden; }
+.menu-open { left: 0; visibility: visible; }
+.close-menu { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--patagonia-charcoal); position: absolute; top: 1rem; right: 1rem; }
+.menu-section { margin-bottom: 2.5rem; }
+.menu-section h4 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--patagonia-charcoal); margin: 0 0 1rem 0; font-weight: 800; border-bottom: 2px solid var(--patagonia-border); padding-bottom: 0.3rem; }
+.offcanvas-menu ul { list-style: none; padding: 0; margin: 0; }
+.offcanvas-menu ul li { margin-bottom: 1rem; }
+.offcanvas-menu ul li a { text-decoration: none; color: var(--patagonia-charcoal); font-weight: 600; font-size: 1.1rem; transition: color 0.2s; }
+.offcanvas-menu ul li a:hover { color: var(--patagonia-accent); }
+.menu-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; }
+.backdrop-visible { opacity: 1; visibility: visible; }
+
+/* --- Product Cards --- */
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; }
+.product-card { background: var(--white); cursor: pointer; transition: opacity 0.3s ease; display: flex; flex-direction: column; position: relative; }
+.product-card:hover { opacity: 0.8; }
+.product-image-container { background-color: var(--patagonia-light-gray); aspect-ratio: 1/1; overflow: hidden; border-radius: 2px; margin-bottom: 1.2rem; position: relative; }
+.product-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
+.product-card:hover .product-image { transform: scale(1.03); }
+.product-info { padding: 0.5rem 0; display: flex; flex-direction: column; align-items: flex-start; flex-grow: 1; }
+.category { font-size: 0.8rem; color: #767676; margin-bottom: 0.5rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.product-card h3 { margin: 0 0 0.5rem 0; color: var(--patagonia-charcoal); font-size: 1.1rem; font-weight: 700; line-height: 1.3; min-height: 2.8rem; }
+.price { font-size: 1.1rem; font-weight: 400; color: var(--patagonia-charcoal); margin: 0 0 1.5rem 0; }
+.add-btn { background-color: transparent; color: var(--patagonia-charcoal); border: 2px solid var(--patagonia-charcoal); padding: 0.8rem 1.5rem; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; cursor: pointer; width: 100%; transition: all 0.2s; margin-top: auto; }
+.add-btn:hover { background-color: var(--patagonia-charcoal); color: var(--white); }
+
+/* --- New Frog Branding Additions --- */
+.badge-overlay { position: absolute; top: 12px; right: 12px; background-color: var(--white); box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; }
+.frog-approved-badge { display: inline-flex; align-items: center; gap: 6px; color: var(--patagonia-charcoal); border: 2px solid var(--brand-frog-accent); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+/* --- Frog Guide Chat Feature --- */
+.frog-chat-btn { position: fixed; bottom: 30px; right: 30px; font-size: 24px; background: var(--white); border: 2px solid var(--patagonia-charcoal); border-radius: 50%; width: 50px; height: 50px; cursor: pointer; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; padding: 0; }
+.frog-chat-btn:hover { transform: scale(1.1); }
+
+.frog-chat-window { position: fixed; bottom: 90px; right: 30px; width: 320px; background: var(--white); border: 1px solid var(--patagonia-border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; z-index: 1000; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease; transform: translateY(20px); }
+.frog-chat-window.active { opacity: 1; visibility: visible; transform: translateY(0); }
+
+.chat-header { background: var(--patagonia-navy); color: var(--white); padding: 1rem; font-weight: 700; display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.9rem; }
+.chat-header button { background: none; border: none; color: var(--white); font-size: 1.5rem; cursor: pointer; line-height: 1; margin: 0; padding: 0; }
+
+.chat-messages { padding: 1rem; height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.8rem; background: var(--patagonia-light-gray); }
+.message { padding: 0.6rem 1rem; border-radius: 18px; font-size: 0.9rem; max-width: 85%; line-height: 1.4; }
+.frog-msg { background: var(--white); border: 1px solid var(--brand-frog-accent); color: var(--patagonia-charcoal); align-self: flex-start; border-bottom-left-radius: 4px; }
+.user-msg { background: var(--patagonia-charcoal); color: var(--white); align-self: flex-end; border-bottom-right-radius: 4px; }
+
+.chat-input-area { display: flex; padding: 0.8rem; border-top: 1px solid var(--patagonia-border); background: var(--white); }
+.chat-input-area input { flex-grow: 1; border: 1px solid #ccc; padding: 0.5rem 0.8rem; border-radius: 20px; font-family: inherit; font-size: 0.9rem; outline: none; }
+.chat-input-area input:focus { border-color: var(--brand-frog-accent); }
+.chat-input-area button { background: none; border: none; color: var(--patagonia-charcoal); font-weight: 700; margin-left: 0.5rem; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; transition: color 0.2s; }
+.chat-input-area button:hover { color: var(--patagonia-accent); }
+
+/* --- Shop Layout Styling --- */
+.shop-container { display: flex; gap: 3rem; max-width: 1400px; margin: 3rem auto; padding: 0 2rem; min-height: 60vh; }
+.shop-filters { width: 250px; flex-shrink: 0; }
+.shop-filters h3 { font-size: 1.1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--patagonia-border); padding-bottom: 0.5rem; text-transform: uppercase; font-weight: 800; }
+.filter-group { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 2.5rem; }
+.filter-group label { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; cursor: pointer; color: var(--patagonia-charcoal); }
+.shop-main { flex-grow: 1; }
+@media (max-width: 768px) { .shop-container { flex-direction: column; } .shop-filters { width: 100%; } }
+
+/* --- Cart Layout Styling --- */
+.cart-wrapper { max-width: 1200px; margin: 3rem auto; padding: 0 2rem; min-height: 50vh; }
+.cart-wrapper h1 { margin-bottom: 2rem; border-bottom: 2px solid var(--patagonia-charcoal); padding-bottom: 1rem; font-weight: 800; text-transform: uppercase; }
+.cart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 4rem; }
+.cart-item { display: flex; gap: 1.5rem; padding-bottom: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--patagonia-border); }
+.cart-item-img { width: 120px; height: 120px; object-fit: cover; background-color: var(--patagonia-light-gray); }
+.cart-item-details { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.cart-item-title { font-weight: 700; font-size: 1.1rem; margin: 0; }
+.cart-item-price { font-weight: 600; color: var(--patagonia-charcoal); margin-top: 0.5rem; }
+.cart-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+.remove-btn { background: none; border: none; color: var(--patagonia-accent); text-decoration: underline; cursor: pointer; padding: 0; font-weight: 600; }
+.order-summary { background-color: var(--patagonia-light-gray); padding: 2rem; height: fit-content; border: 1px solid var(--patagonia-border); }
+.summary-row { display: flex; justify-content: space-between; margin-bottom: 1rem; font-weight: 500; }
+.summary-total { display: flex; justify-content: space-between; font-weight: 800; font-size: 1.25rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #ccc; }
+.btn-checkout { background-color: var(--brand-frog-accent); color: var(--patagonia-charcoal); border: 2px solid var(--patagonia-charcoal); padding: 1rem 1.5rem; font-size: 1rem; font-weight: 800; text-transform: uppercase; cursor: pointer; width: 100%; transition: all 0.2s; margin-top: 2rem; }
+.btn-checkout:hover { background-color: var(--patagonia-charcoal); color: var(--white); }
+@media (max-width: 768px) { .cart-grid { grid-template-columns: 1fr; gap: 2rem; } }
+
+/* --- Footer --- */
+footer { background-color: var(--patagonia-charcoal); color: var(--white); padding: 5rem 2rem 2rem 2rem; border-top: 1px solid var(--patagonia-border); margin-top: 4rem; }
+.footer-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 3rem; border-bottom: 1px solid #555; padding-bottom: 3rem; }
+.footer-col h4 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 1.5rem 0; font-weight: 800; }
+.footer-col ul { list-style: none; padding: 0; margin: 0; }
+.footer-col ul li { margin-bottom: 0.8rem; }
+.footer-col ul li a { color: #CCCCCC; text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+.footer-col ul li a:hover { color: var(--white); text-decoration: underline; }
+.footer-bottom { max-width: 1400px; margin: 2rem auto 0 auto; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #999; flex-wrap: wrap; gap: 1.5rem; }

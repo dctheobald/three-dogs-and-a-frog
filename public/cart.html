@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home | 3 Dogs and a Frog</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⛺</text></svg>">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="promo-bar">Free Shipping on Orders Over $99 | 1% For The Planet</div>
+    
+    <div class="menu-backdrop" id="menuBackdrop"></div>
+    <nav class="offcanvas-menu" id="offcanvasMenu">
+        <button class="close-menu" id="closeMenu" aria-label="Close Menu"><i class="bi bi-x-lg"></i></button>
+        <div class="menu-section">
+            <h4>Shop Gear</h4>
+            <ul><li><a href="/shop">All Products</a></li><li><a href="/shop">Dog Apparel</a></li><li><a href="/shop">Camp Gear</a></li><li><a href="/shop">Packs & Carriers</a></li></ul>
+        </div>
+        <div class="menu-section">
+            <h4>About 3 Dogs</h4>
+            <ul><li><a href="#">Our Story</a></li><li><a href="#">Environmental Impact</a></li></ul>
+        </div>
+        <div class="menu-section">
+            <h4>Customer Service</h4>
+            <ul><li><a href="#">Help Center</a></li><li><a href="#">Contact Us</a></li></ul>
+        </div>
+    </nav>
+    
+    <header>
+        <button class="hamburger-trigger" id="hamburgerTrigger" aria-label="Open Menu"><i class="bi bi-list"></i></button>
+        <div class="logo-container">
+            <a href="/"><img src="/images/logo.jpg" class="brand-logo" alt="3 Dogs and a Frog Logo"></a>
+        </div>
+        <div class="header-right">
+            <nav class="main-nav"><a href="/shop">Shop</a><a href="#">Stories</a></nav>
+            <a href="/cart" class="cart-icon-wrapper">
+                <i class="bi bi-bag"></i>
+                <span class="cart-count" id="headerCartCount">0</span>
+            </a>
+        </div>
+    </header>
+    
+<main>
+        <div class="cart-wrapper">
+            <h1>Your Basecamp Cart</h1>
+            <div class="cart-grid">
+                
+                <div id="cart-contents" class="cart-items-list">
+                    </div>
+
+                <div class="order-summary">
+                    <h2 style="margin-top: 0; font-size: 1.25rem; font-weight: 800; text-transform: uppercase;">Order Summary</h2>
+                    <div class="summary-row"><span>Shipping</span><span>Calculated at checkout</span></div>
+                    <div class="summary-row"><span>Taxes</span><span>Calculated at checkout</span></div>
+                    <div class="summary-total"><span>Total</span><span>$<span id="cart-total">0.00</span></span></div>
+                    
+                    <button class="btn-checkout" id="checkout-btn">Proceed to Checkout</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col"><h4>Shop</h4><ul><li><a href="/shop">Dog Apparel</a></li><li><a href="/shop">Camp Gear</a></li><li><a href="/shop">Packs</a></li></ul></div>
+            <div class="footer-col"><h4>Customer Service</h4><ul><li><a href="#">Help Center</a></li><li><a href="#">Returns</a></li></ul></div>
+            <div class="footer-col"><h4>About Us</h4><ul><li><a href="#">Our Story</a></li><li><a href="#">Impact</a></li></ul></div>
+            <div class="footer-col"><h4>Stay Connected</h4><button style="background: transparent; color: white; border: 1px solid white; padding: 0.8rem 1.5rem; cursor: pointer; text-transform: uppercase; font-weight: bold; width: 100%; font-size: 0.9rem;">Sign Up</button></div>
+        </div>
+	<div class="footer-bottom"><p>&copy; 2026 3 Dogs and a Frog. | This is a demo storefront. No real products are sold.</p></div>
+    </footer>
+    <button id="frogChatBtn" class="frog-chat-btn" aria-label="Chat with the Guide">🐸</button>
+
+    <div id="frogChatWindow" class="frog-chat-window">
+        <div class="chat-header">
+            <span>The Wise Frog</span>
+            <button id="closeChatBtn">&times;</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message frog-msg">Ribbit. Welcome to basecamp. How can I guide your pack today?</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Ask the guide..." autocomplete="off">
+            <button id="sendChatBtn">Send</button>
+        </div>
+    </div>
+    <script src="/main.js"></script>
+</body>
+</html>
