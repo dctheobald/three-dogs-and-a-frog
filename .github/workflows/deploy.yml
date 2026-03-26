@@ -1,0 +1,40 @@
+name: Deploy to Google Cloud
+
+# This tells GitHub to run this script every time you push to the 'main' branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Build and Push Docker Image
+        # Notice we use github.sha instead of v7! Every push gets a unique, tracked ID.
+        run: |
+          IMAGE_TAG=us-central1-docker.pkg.dev/three-dogs-frog-store/retail-repo/retail-app-image:${{ github.sha }}
+          docker build --platform linux/amd64 -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
+
+      - name: Update Compute Engine VM
+        run: |
+          IMAGE_TAG=us-central1-docker.pkg.dev/three-dogs-frog-store/retail-repo/retail-app-image:${{ github.sha }}
+          gcloud compute instances update-container three-dog-one-frog-demo \
+            --zone=us-central1-c \
+            --container-image=$IMAGE_TAG
