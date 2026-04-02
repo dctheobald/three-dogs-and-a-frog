@@ -1,180 +1,75 @@
-# 🏕️ 3 Dogs and a Frog | Premium E-Commerce Platform
+# 🐾 3 Dogs and a Frog - Outdoor Gear
 
-[![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
-[![Stripe](https://img.shields.io/badge/Stripe-Checkout-blue.svg)](https://stripe.com/)
-[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED.svg)](https://www.docker.com/)
-[![GCP](https://img.shields.io/badge/Google_Cloud-Compute_Engine-4285F4.svg)](https://cloud.google.com/)
-[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF.svg)](https://github.com/features/actions)
+> [!IMPORTANT]
+> **DEMO SITE DISCLAIMER:** This is a technical demonstration project for a cloud engineering portfolio. This is **not** a real retail shop. No products are for sale, and no financial transactions are processed.
 
-A fully functional, full-stack e-commerce demonstration platform engineered for a luxury outdoor dog gear brand. This project showcases modern web architecture, secure third-party payment integration, containerization, and a fully automated cloud deployment pipeline.
-
-**🌐 Live Demo:** [https://www.3dogsandafrog.com](https://www.3dogsandafrog.com)
+This repository contains the full-stack e-commerce storefront for **3 Dogs and a Frog**, featuring a containerized Node.js application, Google Cloud Platform (GCP) integration, and a Fastly Global CDN managed via Infrastructure as Code (IaC).
 
 ---
 
-## 🚀 Key Features
+## 🏗️ Architecture Diagram
+The following diagram illustrates the "Cattle, not Pets" deployment pipeline and the global traffic flow.
 
-* **Secure Payment Gateway:** Integrates the Stripe API (Test Mode) to handle secure, PCI-compliant checkout sessions without storing sensitive data on the server.
-* **Separated Architecture:** Clean separation of concerns featuring a vanilla HTML/CSS/JS frontend communicating with a Node.js/Express backend REST API.
-* **State Management:** Utilizes browser `localStorage` to persist the user's shopping cart state across page reloads and different sessions.
-* **The "Frog Sherpa" UI:** A custom-built, interactive JavaScript chat widget providing an AI-themed "guide" experience that responds with brand-aligned logic.
-* **Automated CI/CD Pipeline:** A GitHub Actions workflow that automatically builds a new Docker image, pushes it to Google Artifact Registry, and updates the live Google Compute Engine VM on every push to the `main` branch.
-* **Automated SSL/TLS:** Integrated `greenlock-express` for automatic, on-the-fly Let's Encrypt SSL certificate generation and renewal.
+![3 Dogs and a Frog Architecture Diagram](architecture.png)
 
----
-
-## 🛠️ Tech Stack
-
-**Frontend:**
-* HTML5 / CSS3 (Custom Responsive Grid layouts, No UI Frameworks)
-* Vanilla JavaScript (ES6+)
-* DOM Manipulation & Event Handling
-
-**Backend & Payments:**
-* Node.js & Express.js
-* Stripe API (Stripe Checkout)
-* RESTful Route Architecture
-
-**DevOps & Infrastructure:**
-* **Containerization:** Docker
-* **Hosting:** Google Cloud Platform (Compute Engine / Container-Optimized OS)
-* **Registry:** Google Artifact Registry
-* **CI/CD:** GitHub Actions
+### The Golden Flow:
+1.  **Developer Push:** Code is pushed to GitHub.
+2.  **GitHub Actions:** Builds Docker image -> Pushes to Google Artifact Registry -> Updates VM -> **Purges Fastly Cache** via API.
+3.  **Global Delivery via Fastly:** Users initiate requests (`www.3dogsandafrog.com`), hitting the Fastly VCL Edge. Fastly either serves a cached `HIT` (instant delivery) or fetches a `MISS` from the GCP Origin (VM) on Port 443.
 
 ---
 
-## 🏗️ System Architecture
+## ⚡ CDN & Caching Logic (Fastly VCL)
+Our edge configuration is defined in `infra/main.tf` to ensure high performance and origin shielding.
 
-The following diagram maps the dual lifecycles of the platform: the automated DevOps CI/CD deployment pipeline, and the end-user traffic flow through the secure checkout gateway.
-
-```mermaid
-graph TD
-%% --- Defining Nodes & Subgraphs ---
-
-    %% Developer Environment
-    subgraph DevEnv ["1. Developer Environment (Local Mac)"]
-        DevCode["Source Code: index.html, server.js, styles.css, etc."]
-        DevOS["MacBook Air"]
-    end
-
-    %% CI/CD Pipeline (GitHub)
-    subgraph CICDPipeline ["2. Automated Deployment Pipeline (GitHub)"]
-        GitHubRepo["GitHub Repository"]
-        GH_Secrets["GitHub Secrets (GCP_CREDENTIALS)"]
-        subgraph GHActions ["GitHub Actions Workflow (deploy.yml)"]
-            GHA_Auth["Step: Authenticate to GCP"]
-            GHA_Build["Step: Docker Build --platform linux/amd64"]
-            GHA_Push["Step: Docker Push Image"]
-            GHA_UpdateVM["Step: Trigger VM Update"]
-        end
-    end
-
-    %% Google Cloud Platform
-    subgraph GCP_Cloud ["3. Google Cloud Platform (Infrastructure)"]
-        GCP_Artifact["Artifact Registry"]
-        subgraph GCP_VM ["Compute Engine Instance (retail-vm)"]
-            GCP_COS["Container-Optimized OS"]
-            GCP_Metadata["VM Metadata (NODE_ENV=production, STRIPE_SECRET_KEY)"]
-            
-            subgraph DockerContainer ["Docker Container (retail-app:sha-xyz)"]
-                NodeServer["Node.js / Express Server"]
-                Greenlock["Greenlock-Express (SSL)"]
-                StaticFiles["Static Frontend Files"]
-                ServerLogic["Express.js API (Stripe Logic)"]
-            end
-        end
-    end
-
-    %% Third-Party Services
-    subgraph ThirdParty ["4. Third-Party Integrations"]
-        StripeAPI["Stripe Checkout API (Test Mode)"]
-        LetsEncrypt["Let's Encrypt (SSL Authority)"]
-    end
-
-    %% End User
-    subgraph EndUser ["5. End User Environment (Browser)"]
-        UserBrowser["Customer Browser (Mobile/Desktop)"]
-        UserCart["Browser LocalStorage"]
-    end
-
-
-%% --- Defining Flows & Connections ---
-
-    %% DevOps Flow
-    DevCode -->|"git push -u origin main"| GitHubRepo
-    GitHubRepo -->|"Triggers"| GHActions
-    GH_Secrets -->|"Injects Credentials"| GHA_Auth
-    GHA_Auth -->|"Authenticates"| GHA_Build
-    GHA_Build -->|"Pushes New Image"| GCP_Artifact
-    GHA_Push -->|"Pushes Image"| GCP_Artifact
-    GCP_Artifact -->|"Storage"| GCP_Artifact
-    GHA_UpdateVM -->|"Pulls Image / Restarts"| GCP_COS
-    GCP_COS -->|"Runs"| DockerContainer
-    GCP_Metadata -->|"Injects Env Vars"| DockerContainer
-
-    %% Static Website Traffic Flow
-    UserBrowser -->|"HTTPS 443 Request"| Greenlock
-    Greenlock -->|"Requests Certificate"| LetsEncrypt
-    LetsEncrypt -->|"Issues Certificate"| Greenlock
-    Greenlock -->|"Proxy Traffic"| NodeServer
-    NodeServer -->|"Serves"| StaticFiles
-    StaticFiles -->|"Renders UI"| UserBrowser
-    UserBrowser -->|"Saves Cart State"| UserCart
-
-    %% Checkout Traffic Flow
-    UserBrowser -->|"POST Checkout /cart"| ServerLogic
-    ServerLogic -->|"Calls sk_test_... Key"| StripeAPI
-    StripeAPI -->|"Returns Checkout URL"| ServerLogic
-    ServerLogic -->|"Redirects User"| UserBrowser
-    UserBrowser -->|"Completes Payment"| StripeAPI
-    StripeAPI -->|"Redirects back to success.html"| UserBrowser
-
-%% --- Styling ---
-    classDef dev fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef github fill:#d1e7dd,stroke:#198754,stroke-width:2px;
-    classDef gcp fill:#cfe2f3,stroke:#0d6efd,stroke-width:2px;
-    classDef 3rdparty fill:#f8d7da,stroke:#dc3545,stroke-width:2px;
-    classDef browser fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
-    classDef server fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
-
-    class DevCode,DevOS dev;
-    class GitHubRepo,GH_Secrets,GHActions,GHA_Auth,GHA_Build,GHA_Push,GHA_UpdateVM github;
-    class GCP_Cloud,GCP_Artifact,GCP_VM,GCP_COS,GCP_Metadata gcp;
-    class StripeAPI,LetsEncrypt 3rdparty;
-    class UserBrowser,UserCart browser;
-    class DockerContainer,NodeServer,Greenlock,ServerLogic,StaticFiles server;
-```
+### Cache Rules:
+* **Force Cache for Frontend:** We explicitly override origin headers to cache the storefront for **3600 seconds (1 hour)**. This ensures the site remains online even if the origin server reboots or is scaling.
+* **Request Condition:** Caching is strictly limited to `GET` requests (`req.request == "GET"`) to prevent accidental caching of sensitive POST data or administrative actions.
+* **Automated Purging:** Every successful GitHub deployment triggers a `PURGE ALL` API call, instantly invalidating the global cache so users see new application code immediately.
 
 ---
 
-## 💻 Local Development Setup
+## 🛠️ Local Development
+To run the storefront on your machine for testing content changes:
 
-To run this storefront locally, you will need Node.js and a Stripe Developer account (for test API keys).
-
-**1. Clone the repository**
-```bash
-git clone [https://github.com/dctheobald/three-dogs-and-a-frog.git](https://github.com/dctheobald/three-dogs-and-a-frog.git)
-cd three-dogs-and-a-frog
-```
-
-**2. Install backend dependencies**
-```bash
-npm install
-```
-
-**3. Configure Environment Variables**
-Create a `.env` file in the root directory and add your Stripe Secret Test Key:
-```text
-STRIPE_SECRET_KEY=sk_test_your_secret_key_here
-```
-
-**4. Start the local server**
-```bash
-node server.js
-```
-The application will bypass the SSL requirement locally and boot up at `http://localhost:3000`.
+1.  **Prerequisites:** Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+2.  **Spin up the app:**
+    ```zsh
+    docker-compose up --build
+    ```
+3.  **Access:** Open `http://localhost:8080` in your browser.
 
 ---
 
-## ⚠️ Disclaimer
-**This is a portfolio demonstration project.** The UI, branding, and checkout flows are fully functional, but the Stripe integration is locked in **Test Mode**. No real credit cards are processed, and no physical products are sold or shipped.
+## 🚀 How to Deploy Changes
+
+### 1. Content & Application Changes (HTML, CSS, JS)
+* **Action:** `git add .` -> `git commit -m "update"` -> `git push origin main`
+* **Effect:** Triggers the automated CI/CD pipeline (Build, Deploy, Purge).
+* **Verification:** Check GitHub Actions tab for success. Changes are instant.
+
+### 2. Infrastructure & Networking Changes (VM, Firewall, CDN)
+All cloud resources are managed via Terraform in the `/infra` directory.
+* **Action:**
+    ```zsh
+    cd infra
+    terraform plan   # Preview what will change
+    terraform apply  # Execute changes (type 'yes')
+    ```
+* **Verification:** Check GCP or Fastly Dashboards to confirm resource states.
+
+---
+
+## 📁 Project Structure
+* `infra/`: Terraform HCL files (Providers, Variables, and Resources).
+* `public/`: Static assets (images, CSS).
+* `views/`: EJS Templates for the storefront.
+* `.github/workflows/`: YAML definitions for CI/CD and Fastly Purging.
+* `app.js`: Express.js server logic.
+* `Dockerfile`: Container instructions for the Node.js environment.
+
+---
+
+## ⚠️ Security Requirements
+* **Local Secrets:** `infra/terraform.tfvars` (Contains GCP Project ID and Fastly API Key). This file is ignored by Git.
+* **CI Secrets:** `FASTLY_API_KEY` and `FASTLY_SERVICE_ID` must be configured in GitHub Repository Secrets.
