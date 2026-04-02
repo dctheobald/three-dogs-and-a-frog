@@ -42,3 +42,8 @@ jobs:
           gcloud compute instances update-container three-dog-one-frog-demo \
             --zone=us-central1-c \
             --container-image=$IMAGE_TAG
+
+      - name: Purge Fastly Cache
+        run: |
+          curl -X POST -H "Fastly-Key: ${{ secrets.FASTLY_API_KEY }}" \
+            https://api.fastly.com/service/${{ secrets.FASTLY_SERVICE_ID }}/purge_all

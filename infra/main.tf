@@ -1,23 +1,25 @@
 # 1. The Google Cloud VM (Origin)
-resource "google_compute_instance" "retail_origin" {
-  name         = "three-dog-one-frog-demo"
-  machine_type = "e2-micro"
+ resource "google_compute_instance" "retail_origin" {
+  name                      = "three-dog-one-frog-demo"
+  machine_type              = "e2-micro"
   allow_stopping_for_update = true
+
+  # This tells GCP this is a Container VM
+  metadata = {
+    gce-container-declaration = "spec:\n  containers:\n    - name: retail-app\n      image: gcr.io/${var.gcp_project_id}/retail-app:latest\n      ports:\n        - containerPort: 8080\n      restartPolicy: Always\n  volumes: []\n"
+  }
 
   boot_disk {
     initialize_params {
-      image = "cos-cloud/cos-stable" # Container-Optimized OS
+      image = "cos-cloud/cos-stable"
     }
   }
 
   network_interface {
     network = "default"
-    access_config {
-      # Allocates a public IP automatically
-    }
+    access_config {}
   }
 
-  # Allow HTTP/HTTPS traffic
   tags = ["http-server", "https-server"]
 }
 
