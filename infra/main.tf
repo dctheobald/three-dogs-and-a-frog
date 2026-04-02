@@ -1,13 +1,9 @@
-# 1. The Google Cloud VM (Origin)
- resource "google_compute_instance" "retail_origin" {
-  name                      = "three-dog-one-frog-demo"
-  machine_type              = "e2-micro"
-  allow_stopping_for_update = true
-
-  # This tells GCP this is a Container VM
-  metadata = {
-    gce-container-declaration = "spec:\n  containers:\n    - name: retail-app\n      image: gcr.io/${var.gcp_project_id}/retail-app:latest\n      ports:\n        - containerPort: 8080\n      restartPolicy: Always\n  volumes: []\n"
-  }
+# 1. THE GCP VM
+resource "google_compute_instance" "retail_origin" {
+  name         = "three-dog-one-frog-prod"
+  machine_type = var.machine_type
+  zone         = var.zone
+  tags         = ["http-server", "https-server"]
 
   boot_disk {
     initialize_params {
@@ -20,51 +16,122 @@
     access_config {}
   }
 
-  tags = ["http-server", "https-server"]
+  service_account {
+    email  = "${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+    scopes = ["cloud-platform"]
+  }
+
+metadata = {
+    startup-script = <<-EOT
+      #!/bin/bash
+      # 1. Point Docker to a writable directory on Container-Optimized OS
+      export DOCKER_CONFIG=/tmp/.docker
+      mkdir -p $DOCKER_CONFIG
+
+      # 2. Auth Docker to Artifact Registry
+      docker-credential-gcr configure-docker --registries="us-central1-docker.pkg.dev"
+      
+      # 3. Create a shared Docker network
+      docker network create frog-net || true
+      
+      # 4. Clean up any old containers
+      docker rm -f retail-app || true
+      docker rm -f caddy-ssl || true
+      
+      # 5. Run your Node App
+      docker run -d --name retail-app --network frog-net --restart always \
+        -e STRIPE_SECRET_KEY="${data.google_secret_manager_secret_version.stripe_key.secret_data}" \
+        -e PORT="3000" \
+        -e NODE_ENV="${var.node_env}" \
+        ${var.app_image}
+        
+      # 6. Run the Caddy SSL Proxy
+      docker run -d --name caddy-ssl --network frog-net --restart always -p 443:443 \
+        caddy:alpine caddy reverse-proxy --from https://www.${var.domain_name} --to http://retail-app:3000 --internal-certs
+    EOT
+  }
 }
 
-# 2. The Fastly CDN (Edge)
-resource "fastly_service_vcl" "retail_cdn" {
-  name = "3 Dogs and a Frog CDN (Terraform)"
-
-  lifecycle {
-    ignore_changes = [
-      domain
-    ]
-  }
-
-  # The WWW Domain
-  domain {
-    name = "www.3dogsandafrog.com"
-  }
-
-  # The Apex Domain (Missing from original code)
-  domain {
-    name = "3dogsandafrog.com"
-  }
+# 2.  THE FASTLY SERVICE (Notice: Domain blocks are removed)
+resource "fastly_service_vcl" "retail_fastly" {
+  name = "three-dogs-frog-store-production"
 
   backend {
-    # Dynamically grabs the IP from the GCP resource above
-    address           = google_compute_instance.retail_origin.network_interface.0.access_config.0.nat_ip
-    name              = "GCP Origin"
-    port              = 443
-    use_ssl           = true
-    ssl_cert_hostname = var.domain_name
-    ssl_sni_hostname  = var.domain_name
-    override_host     = var.domain_name
+    address        = google_compute_instance.retail_origin.network_interface[0].access_config[0].nat_ip
+    name           = "gcp-origin-secure"
+    port           = 443
+    use_ssl        = true
+    ssl_check_cert = false
+    ssl_sni_hostname = "www.${var.domain_name}"
   }
 
-  # Force Cache Rule
-  request_setting {
-    name          = "Force Cache for Frontend"
-    action        = "lookup"
-    max_stale_age = 3600
-    force_miss    = false
+  snippet {
+    name     = "force-https-and-www"
+    type     = "recv"
+    priority = 100
+    content  = <<EOF
+  # If it's HTTP OR if it's the apex domain, trigger the single redirect
+  if (!req.http.Fastly-SSL || req.http.host == "${var.domain_name}") {
+    error 801 "Redirect to Secure WWW";
+  }
+EOF
   }
 
-  condition {
-    name      = "Only Cache GET Requests"
-    statement = "req.request == \"GET\""
-    type      = "REQUEST"
+  snippet {
+    name     = "redirect-logic"
+    type     = "error"
+    priority = 100
+    content  = <<EOF
+  if (obj.status == 801) {
+    set obj.status = 301;
+    # Hardcode the final destination scheme and subdomain
+    set obj.http.Location = "https://www.${var.domain_name}" req.url;
+    return(deliver);
   }
+EOF
+  }
+
+snippet {
+    name     = "force-cache-static-assets"
+    type     = "fetch"
+    priority = 100
+    content  = <<EOF
+  if (req.url.ext ~ "^(jpg|jpeg|gif|png|webp|svg|css|js|JPG|JPEG|PNG)$") {
+    # 1. Strip cookies so Fastly doesn't panic and bypass the cache
+    unset beresp.http.Set-Cookie;
+    
+    # 2. Strip Vary headers to prevent cache fragmentation
+    unset beresp.http.Vary;
+
+    # 3. Force the TTL and tell the browser to cache it too
+    set beresp.ttl = 86400s;
+    set beresp.http.Cache-Control = "public, max-age=86400";
+    
+    # 4. Deliver immediately
+    return(deliver);
+  }
+EOF
+  }
+
+  force_destroy = true
+}
+
+# 3. THE VERSIONLESS DOMAINS (The new API method)
+resource "fastly_domain" "apex" {
+  fqdn = var.domain_name
+}
+
+resource "fastly_domain" "www" {
+  fqdn = "www.${var.domain_name}"
+}
+
+# 4. LINKING THE DOMAINS TO THE SERVICE
+resource "fastly_domain_service_link" "apex_link" {
+  domain_id  = fastly_domain.apex.id
+  service_id = fastly_service_vcl.retail_fastly.id
+}
+
+resource "fastly_domain_service_link" "www_link" {
+  domain_id  = fastly_domain.www.id
+  service_id = fastly_service_vcl.retail_fastly.id
 }

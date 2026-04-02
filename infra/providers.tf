@@ -6,17 +6,23 @@ terraform {
     }
     fastly = {
       source  = "fastly/fastly"
-      version = "~> 5.0"
+      version = ">=5.12.0"
     }
   }
 }
 
 provider "google" {
-  project = var.gcp_project_id
-  region  = "us-central1"
-  zone    = "us-central1-a"
+  project = var.project_id
+  region  = var.region
+}
+
+data "google_project" "project" {}
+
+data "google_secret_manager_secret_version" "stripe_key" {
+  secret  = "stripe-secret-key"
+  version = "latest"
 }
 
 provider "fastly" {
-  api_key = var.fastly_api_key
+  # No api_key line here. It will pull from your shell's FASTLY_API_KEY
 }

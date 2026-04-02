@@ -10,3 +10,4 @@ crash.log
 *.tfvars.json
 override.tf
 override.tf.json
+.envrc

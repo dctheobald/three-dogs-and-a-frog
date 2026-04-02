@@ -1,16 +1,35 @@
-variable "gcp_project_id" {
-  description = "The ID of your Google Cloud Project"
+variable "project_id" {
   type        = string
+  description = "The GCP Project ID"
 }
 
-variable "fastly_api_key" {
-  description = "Your Fastly API Key"
+variable "region" {
+  type    = string
+  default = "us-central1"
+}
+
+variable "zone" {
+  type    = string
+  default = "us-central1-c"
+}
+
+variable "machine_type" {
+  type    = string
+  default = "e2-micro"
+}
+
+variable "app_image" {
   type        = string
-  sensitive   = true
+  description = "The full Docker image path"
 }
 
 variable "domain_name" {
-  description = "The primary production domain"
   type        = string
-  default     = "www.3dogsandafrog.com"
+  default     = "3dogsandafrog.com"
+}
+
+variable "node_env" {
+  type        = string
+  default     = "production"
+  description = "Switch between 'production' and 'development'"
 }

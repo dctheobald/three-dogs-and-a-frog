@@ -28,18 +28,20 @@ The following diagram illustrates the automated deployment pipeline and the glob
 
 ### The Golden Flow:
 1.  **Developer Push:** Code is pushed to GitHub.
-2.  **GitHub Actions:** Builds Docker image -> Pushes to Google Artifact Registry -> Updates VM -> **Purges Fastly Cache** via API.
-3.  **Global Delivery via Fastly:** Users initiate requests (`www.3dogsandafrog.com`), hitting the Fastly Edge. Fastly either serves a cached `HIT` (instant delivery) or fetches a `MISS` from the GCP Origin (VM) on Port 443.
+2.  **GitHub Actions:** Builds Docker image -> Pushes to Google Artifact Registry -> Updates VM via SSH -> **Purges Fastly Cache** via API.
+3.  **Zero-Trust Delivery:** Users hit the Fastly Edge via `www.3dogsandafrog.com`. Fastly collapses redirects and fetches misses from the GCP Origin (VM) over **strict HTTPS (Port 443)**. 
+4.  **Sidecar Proxy:** A **Caddy** container on the VM terminates TLS and proxies traffic to the Node.js app over an isolated internal network.
 
 ---
 
 ## ⚡ CDN & Caching Logic (Fastly Edge)
-Our edge configuration is defined in `infra/main.tf` to ensure high performance and origin shielding.
+Our edge configuration is defined in `infra/main.tf` to ensure high performance and origin shielding through custom VCL.
 
 ### Cache Rules:
-* **Force Cache for Frontend:** We explicitly override origin headers to cache the storefront for **600 seconds (10 minutes)**. This ensures the site remains online even if the origin server reboots or is scaling.
-* **Request Condition:** Caching is strictly limited to `GET` requests (`req.request == "GET"`) to prevent accidental caching of sensitive POST data or administrative actions.
-* **Automated Purging:** Every successful GitHub deployment triggers a `PURGE ALL` API call, instantly invalidating the global cache so users see new application code immediately.
+* **Collapsed Redirects:** HTTP and Apex domain requests are redirected to Secure WWW in a single hop to reduce latency.
+* **Aggressive Static Caching:** We explicitly strip origin cookies from static assets (JPG, PNG, JS, CSS) at the edge, forcing a **24-hour (86400s) TTL**. 
+* **Origin Shielding:** By stripping `Set-Cookie` and `Vary` headers for static files, we maximize Cache Hit Ratios (CHR) and protect the `e2-micro` origin from unnecessary load.
+* **Automated Purging:** Every successful GitHub deployment triggers a `PURGE ALL` API call, ensuring users see new code instantly despite aggressive caching.
 
 ---
 
@@ -51,7 +53,7 @@ To run the storefront on your machine for testing content changes:
     ```zsh
     docker-compose up --build
     ```
-3.  **Access:** Open `http://localhost:8080` in your browser.
+3.  **Access:** Open `http://localhost:3000` in your browser.
 
 ---
 
@@ -67,8 +69,8 @@ All cloud resources are managed via Terraform in the `/infra` directory.
 * **Action:**
     ```zsh
     cd infra
-    terraform plan   # Preview what will change
-    terraform apply  # Execute changes (type 'yes')
+    terraform plan    # Preview what will change
+    terraform apply   # Execute changes (type 'yes')
     ```
 * **Verification:** Check GCP or Fastly Dashboards to confirm resource states.
 
@@ -86,4 +88,5 @@ All cloud resources are managed via Terraform in the `/infra` directory.
 
 ## ⚠️ Security Requirements
 * **Local Secrets:** `infra/terraform.tfvars` (Contains GCP Project ID and Fastly API Key). This file is ignored by Git.
+* **GCP Secrets:** `STRIPE_SECRET_KEY` is stored in GCP Secret Manager and injected at runtime via the VM's startup script.
 * **CI Secrets:** `FASTLY_API_KEY` and `FASTLY_SERVICE_ID` must be configured in GitHub Repository Secrets.
