@@ -1,29 +1,43 @@
-# 🐾 3 Dogs and a Frog - Outdoor Gear
+# 🏕️ 3 Dogs and a Frog | Premium E-Commerce Platform
+
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
+[![Stripe](https://img.shields.io/badge/Stripe-Checkout-blue.svg)](https://stripe.com/)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED.svg)](https://www.docker.com/)
+[![GCP](https://img.shields.io/badge/Google_Cloud-Compute_Engine-4285F4.svg)](https://cloud.google.com/)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF.svg)](https://github.com/features/actions)
+
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dctheobald/three-dogs-and-a-frog/deploy.yml?branch=main&style=flat-square&label=Deployment)
+![Terraform](https://img.shields.io/badge/Infrastructure-Terraform-623CE4?style=flat-square&logo=terraform)
+![Fastly](https://img.shields.io/badge/CDN-Fastly-e61305?style=flat-square&logo=fastly)
+![GCP](https://img.shields.io/badge/Cloud-GCP-4285F4?style=flat-square&logo=google-cloud)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 > [!IMPORTANT]
 > **DEMO SITE DISCLAIMER:** This is a technical demonstration project for a cloud engineering portfolio. This is **not** a real retail shop. No products are for sale, and no financial transactions are processed.
 
-This repository contains the full-stack e-commerce storefront for **3 Dogs and a Frog**, featuring a containerized Node.js application, Google Cloud Platform (GCP) integration, and a Fastly Global CDN managed via Infrastructure as Code (IaC).
+A fully functional, full-stack e-commerce demonstration platform engineered for a luxury outdoor dog gear brand. This project showcases modern web architecture, secure third-party payment integration, containerization, and a fully automated cloud deployment pipeline.
+
+**🌐 Live Demo:** [https://www.3dogsandafrog.com](https://www.3dogsandafrog.com)
 
 ---
 
 ## 🏗️ Architecture Diagram
-The following diagram illustrates the "Cattle, not Pets" deployment pipeline and the global traffic flow.
+The following diagram illustrates the automated deployment pipeline and the global traffic flow.
 
 ![3 Dogs and a Frog Architecture Diagram](architecture.png)
 
 ### The Golden Flow:
 1.  **Developer Push:** Code is pushed to GitHub.
 2.  **GitHub Actions:** Builds Docker image -> Pushes to Google Artifact Registry -> Updates VM -> **Purges Fastly Cache** via API.
-3.  **Global Delivery via Fastly:** Users initiate requests (`www.3dogsandafrog.com`), hitting the Fastly VCL Edge. Fastly either serves a cached `HIT` (instant delivery) or fetches a `MISS` from the GCP Origin (VM) on Port 443.
+3.  **Global Delivery via Fastly:** Users initiate requests (`www.3dogsandafrog.com`), hitting the Fastly Edge. Fastly either serves a cached `HIT` (instant delivery) or fetches a `MISS` from the GCP Origin (VM) on Port 443.
 
 ---
 
-## ⚡ CDN & Caching Logic (Fastly VCL)
+## ⚡ CDN & Caching Logic (Fastly Edge)
 Our edge configuration is defined in `infra/main.tf` to ensure high performance and origin shielding.
 
 ### Cache Rules:
-* **Force Cache for Frontend:** We explicitly override origin headers to cache the storefront for **3600 seconds (1 hour)**. This ensures the site remains online even if the origin server reboots or is scaling.
+* **Force Cache for Frontend:** We explicitly override origin headers to cache the storefront for **600 seconds (10 minutes)**. This ensures the site remains online even if the origin server reboots or is scaling.
 * **Request Condition:** Caching is strictly limited to `GET` requests (`req.request == "GET"`) to prevent accidental caching of sensitive POST data or administrative actions.
 * **Automated Purging:** Every successful GitHub deployment triggers a `PURGE ALL` API call, instantly invalidating the global cache so users see new application code immediately.
 
