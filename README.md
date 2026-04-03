@@ -24,7 +24,7 @@ A fully functional, full-stack e-commerce demonstration platform engineered for 
 ## 🏗️ Architecture Diagram
 The following diagram illustrates the automated deployment pipeline and the global traffic flow.
 
-![3 Dogs and a Frog Architecture Diagram](architecture.png)
+![3 Dogs and a Frog Architecture Diagram](architecture.png?v=2)
 
 ### The Golden Flow:
 1.  **Developer Push:** Code is pushed to GitHub.
@@ -35,7 +35,7 @@ The following diagram illustrates the automated deployment pipeline and the glob
 ---
 
 ## ⚡ CDN & Caching Logic (Fastly Edge)
-Our edge configuration is defined in `infra/main.tf` to ensure high performance and origin shielding through custom VCL.
+Our edge configuration is defined in `retail-app/infra/main.tf` to ensure high performance and origin shielding through custom VCL.
 
 ### Cache Rules:
 * **Collapsed Redirects:** HTTP and Apex domain requests are redirected to Secure WWW in a single hop to reduce latency.
@@ -49,11 +49,14 @@ Our edge configuration is defined in `infra/main.tf` to ensure high performance 
 To run the storefront on your machine for testing content changes:
 
 1.  **Prerequisites:** Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-2.  **Spin up the app:**
+2.  **Setup Environment:** Ensure you have a `.env` file with `STRIPE_SECRET_KEY`.
+3.  **Spin up the app:**
     ```zsh
-    docker-compose up --build
+    # Manually passing environment variables to the local container
+    docker-compose run -e NODE_ENV=development -e PORT=8080 -p 8080:8080 web
     ```
-3.  **Access:** Open `http://localhost:3000` in your browser.
+    *Alternatively, use `docker-compose up --build` if your `docker-compose.yml` is configured with these defaults.*
+4.  **Access:** Open `http://localhost:8080` in your browser.
 
 ---
 
@@ -65,28 +68,29 @@ To run the storefront on your machine for testing content changes:
 * **Verification:** Check GitHub Actions tab for success. Changes are instant.
 
 ### 2. Infrastructure & Networking Changes (VM, Firewall, CDN)
-All cloud resources are managed via Terraform in the `/infra` directory.
+All cloud resources are managed via Terraform in the `retail-app/infra` directory.
 * **Action:**
     ```zsh
-    cd infra
+    cd retail-app/infra
     terraform plan    # Preview what will change
     terraform apply   # Execute changes (type 'yes')
     ```
-* **Verification:** Check GCP or Fastly Dashboards to confirm resource states.
+* **Note:** Changes to documentation (README.md) or repository metadata files **do not** trigger a rebuild of the VM or GCP infrastructure unless `terraform apply` detects a change in the HCL files.
 
 ---
 
 ## 📁 Project Structure
-* `infra/`: Terraform HCL files (Providers, Variables, and Resources).
-* `public/`: Static assets (images, CSS).
-* `views/`: EJS Templates for the storefront.
+* `retail-app/`: Core application and infrastructure directory.
+    * `infra/`: Terraform HCL files (Providers, Variables, and Resources).
+    * `public/`: Static assets (images, CSS).
+    * `src/`: Application source code and components.
+    * `server.js`: Express.js server logic and entry point.
 * `.github/workflows/`: YAML definitions for CI/CD and Fastly Purging.
-* `app.js`: Express.js server logic.
 * `Dockerfile`: Container instructions for the Node.js environment.
 
 ---
 
 ## ⚠️ Security Requirements
-* **Local Secrets:** `infra/terraform.tfvars` (Contains GCP Project ID and Fastly API Key). This file is ignored by Git.
+* **Local Secrets:** `retail-app/infra/terraform.tfvars` (Contains GCP Project ID and Fastly API Key). This file is ignored by Git.
 * **GCP Secrets:** `STRIPE_SECRET_KEY` is stored in GCP Secret Manager and injected at runtime via the VM's startup script.
 * **CI Secrets:** `FASTLY_API_KEY` and `FASTLY_SERVICE_ID` must be configured in GitHub Repository Secrets.
