@@ -30,20 +30,27 @@ jobs:
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Build and Push Docker Image
-        # Notice we use github.sha instead of v7! Every push gets a unique, tracked ID.
         run: |
           IMAGE_TAG=us-central1-docker.pkg.dev/three-dogs-frog-store/retail-repo/retail-app-image:${{ github.sha }}
           docker build --platform linux/amd64 -t $IMAGE_TAG .
           docker push $IMAGE_TAG
 
-      - name: Update Compute Engine VM
+      - name: Update VM Metadata and Restart
         run: |
           IMAGE_TAG=us-central1-docker.pkg.dev/three-dogs-frog-store/retail-repo/retail-app-image:${{ github.sha }}
-          gcloud compute instances update-container three-dog-one-frog-demo \
+          
+          # 1. Update the 'app_image' metadata so the startup script knows which tag to pull
+          gcloud compute instances add-metadata three-dog-one-frog-prod \
             --zone=us-central1-c \
-            --container-image=$IMAGE_TAG
+            --metadata=app_image=$IMAGE_TAG
+
+          # 2. Reset the instance to trigger the new startup script execution
+          gcloud compute instances reset three-dog-one-frog-prod \
+            --zone=us-central1-c
 
       - name: Purge Fastly Cache
         run: |
+          # We use a 5-second sleep to give the VM a head start on booting before purging
+          sleep 5
           curl -X POST -H "Fastly-Key: ${{ secrets.FASTLY_API_KEY }}" \
             https://api.fastly.com/service/${{ secrets.FASTLY_SERVICE_ID }}/purge_all
