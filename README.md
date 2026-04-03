@@ -83,7 +83,6 @@ All cloud resources are managed via Terraform in the `retail-app/infra` director
 * `retail-app/`: Core application and infrastructure directory.
     * `infra/`: Terraform HCL files (Providers, Variables, and Resources).
     * `public/`: Static assets (images, CSS).
-    * `src/`: Application source code and components.
     * `server.js`: Express.js server logic and entry point.
 * `.github/workflows/`: YAML definitions for CI/CD and Fastly Purging.
 * `Dockerfile`: Container instructions for the Node.js environment.
