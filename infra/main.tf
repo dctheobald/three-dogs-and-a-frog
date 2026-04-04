@@ -39,11 +39,13 @@ metadata = {
       docker rm -f caddy-ssl || true
       
       # 5. Run your Node App
+      APP_IMAGE=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_image)
+
       docker run -d --name retail-app --network frog-net --restart always \
-        -e STRIPE_SECRET_KEY="${data.google_secret_manager_secret_version.stripe_key.secret_data}" \
-        -e PORT="3000" \
-        -e NODE_ENV="${var.node_env}" \
-        ${var.app_image}
+      -e STRIPE_SECRET_KEY="${data.google_secret_manager_secret_version.stripe_key.secret_data}" \
+      -e PORT="3000" \
+      -e NODE_ENV="${var.node_env}" \
+      $APP_IMAGE
         
       # 6. Run the Caddy SSL Proxy
       docker run -d --name caddy-ssl --network frog-net --restart always -p 443:443 \
