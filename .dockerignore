@@ -1,4 +1,12 @@
+# Existing
 node_modules
 npm-debug.log
 .git
 .DS_Store
+
+# Security & Infrastructure Blocks
+.env
+.envrc
+.gitignore
+greenlock.d/
+infra/

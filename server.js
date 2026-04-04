@@ -51,23 +51,11 @@ app.post('/create-checkout-session', async (req, res) => {
     }
 });
 
-// 2. CHECK ENVIRONMENT: Local vs Production
-const isLocal = process.env.NODE_ENV !== 'production';
+// 2. --- START SERVER ---
+// Always listen on the port provided by Docker (defaults to 3000)
+// Binding to '0.0.0.0' is required inside Docker to accept outside connections from Caddy
+const PORT = process.env.PORT || 3000;
 
-if (isLocal) {
-    // If running locally on your Mac, use standard Express on port 3000
-    const PORT = 3000;
-    app.listen(PORT, () => {
-        console.log(`🏕️ 3 Dogs and a Frog local server running at http://localhost:${PORT}`);
-    });
-} else {
-    // If running on Google Cloud, wrap Express in Greenlock for SSL
-    require('greenlock-express')
-        .init({
-            packageRoot: __dirname,
-            configDir: './greenlock.d',
-            maintainerEmail: 'dctheobald@gmail.com', // Your Let's Encrypt recovery email
-            cluster: false
-        })
-        .serve(app);
-}
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🏕️ 3 Dogs and a Frog backend running on port ${PORT}`);
+});

@@ -52,7 +52,15 @@ metadata = {
         caddy:alpine caddy reverse-proxy --from https://www.${var.domain_name} --to http://retail-app:3000 --internal-certs
     EOT
   }
-}
+ 
+# Tell Terraform to ignore changes made by GitHub Actions
+   lifecycle {
+     ignore_changes = [
+       metadata["app_image"],
+     ]
+   }
+ }
+
 
 # 2.  THE FASTLY SERVICE (Notice: Domain blocks are removed)
 resource "fastly_service_vcl" "retail_fastly" {
