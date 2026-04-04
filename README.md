@@ -30,7 +30,7 @@ The following diagram illustrates the automated deployment pipeline and the glob
 1.  **Developer Push:** Code is pushed to GitHub.
 2.  **GitHub Actions:** Builds Docker image -> Pushes to Google Artifact Registry -> Updates VM via SSH -> **Purges Fastly Cache** via API.
 3.  **Zero-Trust Delivery:** Users hit the Fastly Edge via `www.3dogsandafrog.com`. Fastly collapses redirects and fetches misses from the GCP Origin (VM) over **strict HTTPS (Port 443)**. 
-4.  **Sidecar Proxy:** A **Caddy** container on the VM terminates TLS and proxies traffic to the Node.js app over an isolated internal network.
+4.  **Sidecar Proxy & Backend:** A **Caddy** container on the VM terminates TLS and proxies traffic to the Node.js container over an isolated internal Docker network (`frog-net`). The Node.js application operates as a pure backend service on **Port 3000**, completely decoupled from SSL duties.
 
 ---
 
@@ -48,15 +48,21 @@ Our edge configuration is defined in `retail-app/infra/main.tf` to ensure high p
 ## 🛠️ Local Development
 To run the storefront on your machine for testing content changes:
 
-1.  **Prerequisites:** Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-2.  **Setup Environment:** Ensure you have a `.env` file with `STRIPE_SECRET_KEY`.
+1.  **Prerequisites:** Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Node.js.
+2.  **Setup Environment (`.envrc`):** We use `direnv` and an `.envrc` file to manage local variables. 
+    > **CRITICAL:** Never place Terraform variable overrides (e.g., `export TF_VAR_node_env="development"`) in your `.envrc` file, as this will poison the production VM state. Your file should only contain:
+    > ```bash
+    > export FASTLY_API_KEY="your-key-here"
+    > export STRIPE_SECRET_KEY="sk_test_..."
+    > export PORT=3000
+    > export NODE_ENV="development"
+    > ```
 3.  **Spin up the app:**
     ```zsh
-    # Manually passing environment variables to the local container
-    docker-compose run -e NODE_ENV=development -e PORT=8080 -p 8080:8080 web
+    npm install
+    npm start
     ```
-    *Alternatively, use `docker-compose up --build` if your `docker-compose.yml` is configured with these defaults.*
-4.  **Access:** Open `http://localhost:8080` in your browser.
+4.  **Access:** Open `http://localhost:3000` in your browser.
 
 ---
 
@@ -75,7 +81,11 @@ All cloud resources are managed via Terraform in the `retail-app/infra` director
     terraform plan    # Preview what will change
     terraform apply   # Execute changes (type 'yes')
     ```
-* **Note:** Changes to documentation (README.md) or repository metadata files **do not** trigger a rebuild of the VM or GCP infrastructure unless `terraform apply` detects a change in the HCL files.
+* **Post-Apply Requirements:**
+    * **VM Reboots:** Modifying the VM's `startup-script` via Terraform does not automatically reboot the VM. You must manually power-cycle the instance to read new instructions:
+      `gcloud compute instances reset three-dog-one-frog-prod --zone=us-central1-c --project=three-dogs-frog-store`
+    * **Fastly Domain Errors:** If Fastly throws a `500 Unknown Domain` error after an update due to versionless domain handoffs, force Terraform to recreate the links:
+      `terraform apply -replace="fastly_domain_service_link.apex_link" -replace="fastly_domain_service_link.www_link"`
 
 ---
 
@@ -83,9 +93,9 @@ All cloud resources are managed via Terraform in the `retail-app/infra` director
 * `retail-app/`: Core application and infrastructure directory.
     * `infra/`: Terraform HCL files (Providers, Variables, and Resources).
     * `public/`: Static assets (images, CSS).
-    * `server.js`: Express.js server logic and entry point.
+    * `server.js`: Express.js server logic and pure backend entry point.
 * `.github/workflows/`: YAML definitions for CI/CD and Fastly Purging.
-* `Dockerfile`: Container instructions for the Node.js environment.
+* `Dockerfile`: Container instructions for the highly-secured Node.js environment.
 
 ---
 
@@ -93,3 +103,5 @@ All cloud resources are managed via Terraform in the `retail-app/infra` director
 * **Local Secrets:** `retail-app/infra/terraform.tfvars` (Contains GCP Project ID and Fastly API Key). This file is ignored by Git.
 * **GCP Secrets:** `STRIPE_SECRET_KEY` is stored in GCP Secret Manager and injected at runtime via the VM's startup script.
 * **CI Secrets:** `FASTLY_API_KEY` and `FASTLY_SERVICE_ID` must be configured in GitHub Repository Secrets.
+* **Terraform Metadata:** The `app_image` tag on the GCP VM is dynamically injected by GitHub Actions. Terraform explicitly ignores this tag using a `lifecycle` block to prevent overwriting the active container image.
+* **Docker Security:** The `retail-app` container runs strictly as the non-root `node` user. A strict `.dockerignore` file ensures local `.env` and `infra/` files never leak into the production build.
