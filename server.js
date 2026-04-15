@@ -9,6 +9,10 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 app.use(express.json());
 
+// --- ROUTERS ---
+const scenarioRoutes = require('./routes/scenarios');
+app.use('/', scenarioRoutes);
+
 // --- STRIPE CHECKOUT ROUTE ---
 app.post('/create-checkout-session', async (req, res) => {
     try {
