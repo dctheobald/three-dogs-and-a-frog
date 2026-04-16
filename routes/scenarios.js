@@ -17,7 +17,14 @@ router.get('/chaos', (req, res) => {
 // An API endpoint we'll use later to actually crash the server for the demo
 router.post('/api/trigger-crash', (req, res) => {
     console.error("🔥 CHAOS DEMO: Intentional fatal error triggered by presenter!");
-    process.exit(1); // This will kill the container, allowing Docker to auto-restart it
+    
+    // 1. Tell the browser we received the command successfully
+    res.status(200).json({ status: 'crashing', message: 'Initiating fatal process.exit(1)...' });
+    
+    // 2. Actually pull the plug 500ms later
+    setTimeout(() => {
+        process.exit(1);
+    }, 500);
 });
 
 // 2. The Observability Demo

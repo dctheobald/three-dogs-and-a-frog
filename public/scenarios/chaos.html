@@ -40,26 +40,33 @@
         const crashBtn = document.getElementById('crashBtn');
         const logWindow = document.getElementById('logWindow');
         let isCrashing = false;
+        let logLines = ["> System initialized...", "> Polling heartbeat endpoint..."];
 
         function log(message) {
             const time = new Date().toLocaleTimeString();
-            logWindow.innerHTML += `> [${time}] ${message}<br>`;
+            logLines.push(`> [${time}] ${message}`);
+            
+            // Keep terminal clean by only keeping the last 20 lines
+            if (logLines.length > 20) logLines.shift();
+            
+            logWindow.innerHTML = logLines.join('<br>');
             logWindow.scrollTop = logWindow.scrollHeight;
         }
 
         // Heartbeat Poller (Checks every 1.5 seconds)
         setInterval(async () => {
             try {
-                // Add Date.now() cache-buster to completely bypass browser caching
+                // Cache buster included
                 const response = await fetch(`/api/health?t=${Date.now()}`);
                 
                 if (response.ok) {
+                    const data = await response.json();
+                    log(`PING /api/health -> 200 OK (Uptime: ${data.uptime.toFixed(1)}s)`);
+                    
                     if (statusBadge.classList.contains('offline')) {
-                        // System has recovered!
                         statusBadge.className = 'status-badge healthy';
                         statusBadge.innerText = '🟢 Server Online';
                         
-                        // Reset the button
                         crashBtn.disabled = false;
                         crashBtn.innerText = '☢️ INITIATE FATAL CRASH';
                         crashBtn.style.opacity = '1';
@@ -68,9 +75,12 @@
                         log('SYSTEM RECOVERED: Docker container restarted successfully.');
                     }
                 } else {
+                    // This happens if Caddy returns a 502 HTML page instead of our JSON
                     throw new Error(`HTTP ${response.status}`);
                 }
             } catch (error) {
+                log(`PING /api/health -> FAILED (${error.message})`);
+                
                 if (statusBadge.classList.contains('healthy')) {
                     statusBadge.className = 'status-badge offline';
                     statusBadge.innerText = '🔴 Server Offline (502 Gateway)';
@@ -84,16 +94,27 @@
             if (isCrashing) return;
             isCrashing = true;
             
-            // Disable button UI
             crashBtn.disabled = true;
             crashBtn.innerText = '💥 CRASH IN PROGRESS...';
             crashBtn.style.opacity = '0.5';
             
-            log('WARNING: Injecting fatal process.exit(1) command into Node.js...');
+            log('WARNING: Sending kill command to Node.js backend...');
+            
             try {
-                // Trigger the crash endpoint
-                fetch('/api/trigger-crash', { method: 'POST' });
-            } catch (e) {}
+                const res = await fetch('/api/trigger-crash', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if(res.ok) {
+                    const data = await res.json();
+                    log(`SERVER RESPONSE: ${data.message}`);
+                } else {
+                    log(`ERROR: Could not send kill command. HTTP ${res.status}`);
+                }
+            } catch (e) {
+                log(`ERROR: Network failed before command could finish.`);
+            }
         });
     </script>
 
