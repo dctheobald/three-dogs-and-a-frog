@@ -34,11 +34,12 @@
             > Polling heartbeat endpoint...<br>
         </div>
     </div>
-
+  
     <script>
         const statusBadge = document.getElementById('statusBadge');
         const crashBtn = document.getElementById('crashBtn');
         const logWindow = document.getElementById('logWindow');
+        let isCrashing = false;
 
         function log(message) {
             const time = new Date().toLocaleTimeString();
@@ -49,20 +50,30 @@
         // Heartbeat Poller (Checks every 1.5 seconds)
         setInterval(async () => {
             try {
-                const response = await fetch('/api/health');
+                // Add Date.now() cache-buster to completely bypass browser caching
+                const response = await fetch(`/api/health?t=${Date.now()}`);
+                
                 if (response.ok) {
                     if (statusBadge.classList.contains('offline')) {
+                        // System has recovered!
                         statusBadge.className = 'status-badge healthy';
                         statusBadge.innerText = '🟢 Server Online';
+                        
+                        // Reset the button
+                        crashBtn.disabled = false;
+                        crashBtn.innerText = '☢️ INITIATE FATAL CRASH';
+                        crashBtn.style.opacity = '1';
+                        isCrashing = false;
+                        
                         log('SYSTEM RECOVERED: Docker container restarted successfully.');
                     }
                 } else {
-                    throw new Error('502 Bad Gateway');
+                    throw new Error(`HTTP ${response.status}`);
                 }
             } catch (error) {
                 if (statusBadge.classList.contains('healthy')) {
                     statusBadge.className = 'status-badge offline';
-                    statusBadge.innerText = '🔴 Server Offline (502)';
+                    statusBadge.innerText = '🔴 Server Offline (502 Gateway)';
                     log('CONNECTION LOST: Caddy proxy reporting Bad Gateway.');
                 }
             }
@@ -70,12 +81,21 @@
 
         // Crash Trigger
         crashBtn.addEventListener('click', async () => {
+            if (isCrashing) return;
+            isCrashing = true;
+            
+            // Disable button UI
+            crashBtn.disabled = true;
+            crashBtn.innerText = '💥 CRASH IN PROGRESS...';
+            crashBtn.style.opacity = '0.5';
+            
             log('WARNING: Injecting fatal process.exit(1) command into Node.js...');
             try {
-                // We don't await this because the server will literally sever the connection
+                // Trigger the crash endpoint
                 fetch('/api/trigger-crash', { method: 'POST' });
             } catch (e) {}
         });
     </script>
+
 </body>
 </html>

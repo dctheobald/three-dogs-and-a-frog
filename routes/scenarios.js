@@ -32,6 +32,11 @@ router.get('/security', (req, res) => {
 
 // A simple heartbeat endpoint for the UI to poll
 router.get('/api/health', (req, res) => {
+    // 🛡️ Explicitly tell Fastly and the browser NOT to cache this response
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     res.status(200).json({ status: 'healthy', uptime: process.uptime() });
 });
 
