@@ -4,24 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resilience Demo | 3 Dogs and a Frog</title>
+    
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .dashboard { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 500px; width: 100%; }
-        h1 { margin-top: 0; color: #1a1a1a; }
-        .status-badge { display: inline-block; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; margin: 20px 0; transition: all 0.3s ease; }
+        
+        /* Branding Header */
+        .brand-header { margin-bottom: 20px; text-align: center; }
+        .brand-header h2 { margin: 0; color: #2c3e50; font-size: 1.5rem; letter-spacing: 1px; }
+        .brand-header span { color: #27ae60; }
+
+        .dashboard { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 550px; width: 100%; }
+        h1 { margin-top: 0; color: #1a1a1a; font-size: 1.8rem; }
+        p { color: #666; margin-bottom: 25px; }
+        
+        .status-badge { display: inline-block; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; margin: 10px 0 25px 0; transition: all 0.3s ease; }
         .healthy { background-color: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
         .offline { background-color: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
-        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 15px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 6px rgba(220, 53, 69, 0.3); width: 100%; margin-top: 20px;}
+        
+        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 15px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 6px rgba(220, 53, 69, 0.3); width: 100%; }
         .btn-danger:hover { background-color: #c82333; }
         .btn-danger:active { transform: translateY(2px); }
-        .log-window { background: #1e1e1e; color: #00ff00; font-family: monospace; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; height: 150px; overflow-y: auto; font-size: 0.9rem; }
+        .btn-danger:disabled { cursor: not-allowed; }
+
+        /* Terminal & Controls */
+        .terminal-container { margin-top: 25px; text-align: left; }
+        .terminal-controls { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #555; margin-bottom: 5px; font-weight: bold; }
+        .pause-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .log-window { background: #1e1e1e; color: #00ff00; font-family: "Courier New", Courier, monospace; padding: 15px; border-radius: 8px; height: 180px; overflow-y: auto; font-size: 0.85rem; line-height: 1.4; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
+    <div class="brand-header">
+        <h2>🏕️ 3 Dogs <span>and a</span> Frog</h2>
+    </div>
+
     <div class="dashboard">
-        <h1>Chaos Engine: Resilience</h1>
-        <p>Demonstrating Docker auto-recovery and Zero-Trust Edge routing.</p>
+        <h1>Chaos Engine</h1>
+        <p>Demonstrating automated Docker recovery and zero-trust edge routing under catastrophic failure conditions.</p>
         
         <div id="statusBadge" class="status-badge healthy">
             🟢 Server Online
@@ -29,28 +52,46 @@
 
         <button id="crashBtn" class="btn-danger">☢️ INITIATE FATAL CRASH</button>
 
-        <div id="logWindow" class="log-window">
-            > System initialized...<br>
-            > Polling heartbeat endpoint...<br>
+        <div class="terminal-container">
+            <div class="terminal-controls">
+                <span>System Logs</span>
+                <label class="pause-toggle">
+                    <input type="checkbox" id="pauseAutoScroll"> Pause Auto-Scroll
+                </label>
+            </div>
+            <div id="logWindow" class="log-window">
+                > System initialized...<br>
+                > Polling heartbeat endpoint...<br>
+            </div>
         </div>
     </div>
-  
+
     <script>
         const statusBadge = document.getElementById('statusBadge');
         const crashBtn = document.getElementById('crashBtn');
         const logWindow = document.getElementById('logWindow');
+        const pauseToggle = document.getElementById('pauseAutoScroll');
+        
         let isCrashing = false;
+        let lastUptime = 0; 
         let logLines = ["> System initialized...", "> Polling heartbeat endpoint..."];
+        const MAX_LOG_LINES = 100; // Increased buffer so you can actually scroll back
 
         function log(message) {
             const time = new Date().toLocaleTimeString();
             logLines.push(`> [${time}] ${message}`);
-            if (logLines.length > 20) logLines.shift();
+            
+            if (logLines.length > MAX_LOG_LINES) logLines.shift();
+            
             logWindow.innerHTML = logLines.join('<br>');
-            logWindow.scrollTop = logWindow.scrollHeight;
+            
+            // Only auto-scroll to the bottom if the pause checkbox is NOT checked
+            if (!pauseToggle.checked) {
+                logWindow.scrollTop = logWindow.scrollHeight;
+            }
         }
 
-        // Dynamic Poller: Aggressive during a crash, relaxed during normal operation
+        // Dynamic Poller
         async function pollHealth() {
             try {
                 const response = await fetch(`/api/health?t=${Date.now()}`);
@@ -58,23 +99,37 @@
                 if (response.ok) {
                     const data = await response.json();
                     
-                    // Only log the OK pings if we aren't in the middle of a hyper-polling storm
+                    // 1. Check for a literal server resurrection (Uptime Reset)
+                    if (lastUptime > 0 && data.uptime < lastUptime) {
+                        log(`⚠️ CRASH VERIFIED: Uptime plummeted from ${lastUptime.toFixed(1)}s to ${data.uptime.toFixed(1)}s`);
+                        
+                        if (!statusBadge.classList.contains('offline')) {
+                            statusBadge.className = 'status-badge offline';
+                            statusBadge.innerText = '🔴 Server Offline (Micro-Outage)';
+                            await new Promise(r => setTimeout(r, 800)); 
+                        }
+                    }
+                    
+                    lastUptime = data.uptime;
+
+                    // 2. Normal Logging
                     if (!isCrashing) {
                         log(`PING /api/health -> 200 OK (Uptime: ${data.uptime.toFixed(1)}s)`);
                     }
                     
-                    if (statusBadge.classList.contains('offline')) {
-                        statusBadge.className = 'status-badge healthy';
-                        statusBadge.innerText = '🟢 Server Online';
-                        
-                        crashBtn.disabled = false;
-                        crashBtn.innerText = '☢️ INITIATE FATAL CRASH';
-                        crashBtn.style.opacity = '1';
-                        
-                        // Turn off hyper-polling
-                        isCrashing = false; 
-                        
-                        log('SYSTEM RECOVERED: Docker container restarted successfully.');
+                    // 3. Recovery State Machine
+                    if (statusBadge.classList.contains('offline') || isCrashing) {
+                        if (data.uptime < 5) {
+                            statusBadge.className = 'status-badge healthy';
+                            statusBadge.innerText = '🟢 Server Online';
+                            
+                            crashBtn.disabled = false;
+                            crashBtn.innerText = '☢️ INITIATE FATAL CRASH';
+                            crashBtn.style.opacity = '1';
+                            
+                            isCrashing = false; 
+                            log('SYSTEM RECOVERED: Docker container restarted successfully.');
+                        }
                     }
                 } else {
                     throw new Error(`HTTP ${response.status}`);
@@ -88,8 +143,7 @@
                     log('CONNECTION LOST: Caddy proxy reporting Bad Gateway.');
                 }
             } finally {
-                // The Magic: If crashing, poll every 200ms. If normal, poll every 1500ms.
-                const nextTick = isCrashing ? 200 : 1500;
+                const nextTick = isCrashing ? 250 : 1500;
                 setTimeout(pollHealth, nextTick);
             }
         }
@@ -101,12 +155,13 @@
         crashBtn.addEventListener('click', async () => {
             if (isCrashing) return;
             
-            // 1. Immediately engage hyper-polling mode
             isCrashing = true;
-            
             crashBtn.disabled = true;
             crashBtn.innerText = '💥 CRASH IN PROGRESS...';
             crashBtn.style.opacity = '0.5';
+            
+            // Automatically un-pause the terminal on crash initiation so you can see it happen live
+            pauseToggle.checked = false; 
             
             log('WARNING: Sending kill command to Node.js backend...');
             
@@ -127,6 +182,5 @@
             }
         });
     </script>
-
 </body>
 </html>
