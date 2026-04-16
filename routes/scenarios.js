@@ -30,4 +30,9 @@ router.get('/security', (req, res) => {
     servePage(res, 'security.html');
 });
 
+// A simple heartbeat endpoint for the UI to poll
+router.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'healthy', uptime: process.uptime() });
+});
+
 module.exports = router;
