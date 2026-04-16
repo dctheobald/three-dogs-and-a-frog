@@ -5,40 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resilience Demo | 3 Dogs and a Frog</title>
     
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png" onerror="this.onerror=null; this.href='/favicon.ico'">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⛺</text></svg>">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/styles.css">
     
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333; display: flex; flex-direction: column; align-items: center; margin: 0; min-height: 100vh; }
+        /* Scoped styles to prevent clashing with styles.css while maintaining the demo layout */
+        body { background-color: #f4f7f6; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
         
-        /* Enterprise Branding Header */
-        .app-header { width: 100%; background-color: #1a1a1a; padding: 15px 0; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 40px; }
-        .brand-logo { max-height: 60px; width: auto; object-fit: contain; }
-        /* Fallback text styling if the image path is wrong */
-        .app-header a { text-decoration: none; color: #fff; font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
+        /* Mimicking standard e-commerce header styling */
+        .chaos-header { width: 100%; background-color: #ffffff; padding: 20px 0; text-align: center; border-bottom: 1px solid #e5e5e5; margin-bottom: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .chaos-header img { max-height: 80px; width: auto; object-fit: contain; }
 
-        .dashboard { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 600px; width: 90%; margin-bottom: 40px; }
-        h1 { margin-top: 0; color: #2c3e50; font-size: 1.8rem; border-bottom: 2px solid #eee; padding-bottom: 15px; }
-        p { color: #666; margin-bottom: 25px; line-height: 1.5; }
+        .chaos-dashboard { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 650px; width: 90%; margin-bottom: 40px; }
+        .chaos-dashboard h1 { margin-top: 0; color: #2c3e50; font-size: 1.8rem; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .chaos-dashboard p { color: #666; margin-bottom: 25px; line-height: 1.5; }
         
         .status-badge { display: inline-block; padding: 12px 25px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; margin: 10px 0 30px 0; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .healthy { background-color: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
-        .offline { background-color: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
+        .status-badge.healthy { background-color: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
+        .status-badge.offline { background-color: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
         
-        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 18px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4); width: 100%; letter-spacing: 1px;}
-        .btn-danger:hover { background-color: #c82333; transform: translateY(-1px); }
-        .btn-danger:active { transform: translateY(2px); box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4); }
-        .btn-danger:disabled { cursor: not-allowed; background-color: #6c757d; box-shadow: none; opacity: 0.8; }
+        .chaos-btn { background-color: #dc3545; color: white; border: none; padding: 18px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4); width: 100%; letter-spacing: 1px; }
+        .chaos-btn:hover { background-color: #c82333; transform: translateY(-1px); }
+        .chaos-btn:active { transform: translateY(2px); box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4); }
+        .chaos-btn:disabled { cursor: not-allowed; background-color: #6c757d; box-shadow: none; opacity: 0.8; }
 
         /* Terminal & Controls */
         .terminal-container { margin-top: 35px; text-align: left; }
         .terminal-controls { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #555; margin-bottom: 8px; font-weight: 600; padding: 0 5px; }
-        .pause-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; background: #eee; padding: 5px 10px; border-radius: 5px; transition: background 0.2s;}
+        .pause-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; background: #eee; padding: 5px 10px; border-radius: 5px; transition: background 0.2s; user-select: none; }
         .pause-toggle:hover { background: #e0e0e0; }
-        .pause-toggle input { cursor: pointer; }
-        .log-window { background: #1e1e1e; color: #00ff00; font-family: "Courier New", Courier, monospace; padding: 15px; border-radius: 8px; height: 220px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6); border: 1px solid #333; }
         
-        /* Custom Scrollbar for Terminal */
+        .log-window { background: #1e1e1e; color: #00ff00; font-family: "Courier New", Courier, monospace; padding: 15px; border-radius: 8px; height: 250px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6); border: 1px solid #333; }
+        .log-window div { padding: 2px 0; margin: 0; }
+        
+        /* Custom Scrollbar */
         .log-window::-webkit-scrollbar { width: 8px; }
         .log-window::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 4px; }
         .log-window::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
@@ -47,32 +48,32 @@
 </head>
 <body>
 
-    <header class="app-header">
+    <header class="chaos-header">
         <a href="/">
-            <img src="/images/logo.jpg" alt="3 Dogs and a Frog" class="brand-logo" onerror="this.outerHTML='<span>🏕️ 3 Dogs and a Frog</span>'">
+            <img src="/images/logo.jpg" alt="3 Dogs and a Frog">
         </a>
     </header>
 
-    <div class="dashboard">
-        <h1>System Resilience Test</h1>
+    <div class="chaos-dashboard">
+        <h1><i class="bi bi-shield-check"></i> System Resilience Test</h1>
         <p>Demonstrating automated Docker recovery and zero-trust edge routing under catastrophic failure conditions.</p>
         
         <div id="statusBadge" class="status-badge healthy">
-            🟢 Server Online
+            <i class="bi bi-check-circle-fill"></i> Server Online
         </div>
 
-        <button id="crashBtn" class="btn-danger">☢️ INITIATE FATAL CRASH</button>
+        <button id="crashBtn" class="chaos-btn"><i class="bi bi-lightning-charge-fill"></i> INITIATE FATAL CRASH</button>
 
         <div class="terminal-container">
             <div class="terminal-controls">
                 <span>>_ Live Diagnostic Logs</span>
                 <label class="pause-toggle" title="Pause auto-scrolling to review logs">
-                    <input type="checkbox" id="pauseAutoScroll"> Pause Auto-Scroll
+                    <input type="checkbox" id="pauseAutoScroll"> <i class="bi bi-pause-fill"></i> Pause Logs
                 </label>
             </div>
             <div id="logWindow" class="log-window">
-                > System initialized...<br>
-                > Polling heartbeat endpoint...<br>
+                <div>> System initialized...</div>
+                <div>> Polling heartbeat endpoint...</div>
             </div>
         </div>
     </div>
@@ -85,28 +86,32 @@
         
         let isCrashing = false;
         let lastUptime = 0; 
-        let logLines = ["> System initialized...", "> Polling heartbeat endpoint..."];
         const MAX_LOG_LINES = 100;
 
         function log(message) {
             const time = new Date().toLocaleTimeString();
-            logLines.push(`> [${time}] ${message}`);
+            const logLine = document.createElement('div');
+            logLine.textContent = `> [${time}] ${message}`;
+            logWindow.appendChild(logLine);
             
-            if (logLines.length > MAX_LOG_LINES) logLines.shift();
-            
-            // 1. Capture the exact scroll position BEFORE modifying the DOM
-            const currentScrollTop = logWindow.scrollTop;
-            
-            // 2. Update the DOM (this naturally resets scroll position in many browsers)
-            logWindow.innerHTML = logLines.join('<br>');
-            
-            // 3. Either force it to the bottom, or restore the captured scroll position
+            // Only remove old lines and auto-scroll if NOT paused.
             if (!pauseToggle.checked) {
+                while (logWindow.children.length > MAX_LOG_LINES) {
+                    logWindow.removeChild(logWindow.firstChild);
+                }
                 logWindow.scrollTop = logWindow.scrollHeight;
-            } else {
-                logWindow.scrollTop = currentScrollTop;
             }
         }
+
+        // When the user un-pauses, instantly cull the backlog and drop to the bottom
+        pauseToggle.addEventListener('change', (e) => {
+            if (!e.target.checked) {
+                while (logWindow.children.length > MAX_LOG_LINES) {
+                    logWindow.removeChild(logWindow.firstChild);
+                }
+                logWindow.scrollTop = logWindow.scrollHeight;
+            }
+        });
 
         async function pollHealth() {
             try {
@@ -120,7 +125,7 @@
                         
                         if (!statusBadge.classList.contains('offline')) {
                             statusBadge.className = 'status-badge offline';
-                            statusBadge.innerText = '🔴 Server Offline (Micro-Outage)';
+                            statusBadge.innerHTML = '<i class="bi bi-x-octagon-fill"></i> Server Offline (Micro-Outage)';
                             await new Promise(r => setTimeout(r, 800)); 
                         }
                     }
@@ -134,10 +139,10 @@
                     if (statusBadge.classList.contains('offline') || isCrashing) {
                         if (data.uptime < 5) {
                             statusBadge.className = 'status-badge healthy';
-                            statusBadge.innerText = '🟢 Server Online';
+                            statusBadge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Server Online';
                             
                             crashBtn.disabled = false;
-                            crashBtn.innerText = '☢️ INITIATE FATAL CRASH';
+                            crashBtn.innerHTML = '<i class="bi bi-lightning-charge-fill"></i> INITIATE FATAL CRASH';
                             
                             isCrashing = false; 
                             log('SYSTEM RECOVERED: Docker container restarted successfully.');
@@ -151,7 +156,7 @@
                 
                 if (statusBadge.classList.contains('healthy')) {
                     statusBadge.className = 'status-badge offline';
-                    statusBadge.innerText = '🔴 Server Offline (502 Gateway)';
+                    statusBadge.innerHTML = '<i class="bi bi-x-octagon-fill"></i> Server Offline (502 Gateway)';
                     log('CONNECTION LOST: Caddy proxy reporting Bad Gateway.');
                 }
             } finally {
@@ -167,8 +172,9 @@
             
             isCrashing = true;
             crashBtn.disabled = true;
-            crashBtn.innerText = '💥 CRASH IN PROGRESS...';
+            crashBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> CRASH IN PROGRESS...';
             
+            // Force terminal active on crash
             pauseToggle.checked = false; 
             
             log('WARNING: Sending kill command to Node.js backend...');
