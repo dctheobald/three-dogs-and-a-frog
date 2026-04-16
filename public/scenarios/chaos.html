@@ -45,23 +45,23 @@
         function log(message) {
             const time = new Date().toLocaleTimeString();
             logLines.push(`> [${time}] ${message}`);
-            
-            // Keep terminal clean by only keeping the last 20 lines
             if (logLines.length > 20) logLines.shift();
-            
             logWindow.innerHTML = logLines.join('<br>');
             logWindow.scrollTop = logWindow.scrollHeight;
         }
 
-        // Heartbeat Poller (Checks every 1.5 seconds)
-        setInterval(async () => {
+        // Dynamic Poller: Aggressive during a crash, relaxed during normal operation
+        async function pollHealth() {
             try {
-                // Cache buster included
                 const response = await fetch(`/api/health?t=${Date.now()}`);
                 
                 if (response.ok) {
                     const data = await response.json();
-                    log(`PING /api/health -> 200 OK (Uptime: ${data.uptime.toFixed(1)}s)`);
+                    
+                    // Only log the OK pings if we aren't in the middle of a hyper-polling storm
+                    if (!isCrashing) {
+                        log(`PING /api/health -> 200 OK (Uptime: ${data.uptime.toFixed(1)}s)`);
+                    }
                     
                     if (statusBadge.classList.contains('offline')) {
                         statusBadge.className = 'status-badge healthy';
@@ -70,12 +70,13 @@
                         crashBtn.disabled = false;
                         crashBtn.innerText = '☢️ INITIATE FATAL CRASH';
                         crashBtn.style.opacity = '1';
-                        isCrashing = false;
+                        
+                        // Turn off hyper-polling
+                        isCrashing = false; 
                         
                         log('SYSTEM RECOVERED: Docker container restarted successfully.');
                     }
                 } else {
-                    // This happens if Caddy returns a 502 HTML page instead of our JSON
                     throw new Error(`HTTP ${response.status}`);
                 }
             } catch (error) {
@@ -86,12 +87,21 @@
                     statusBadge.innerText = '🔴 Server Offline (502 Gateway)';
                     log('CONNECTION LOST: Caddy proxy reporting Bad Gateway.');
                 }
+            } finally {
+                // The Magic: If crashing, poll every 200ms. If normal, poll every 1500ms.
+                const nextTick = isCrashing ? 200 : 1500;
+                setTimeout(pollHealth, nextTick);
             }
-        }, 1500);
+        }
+
+        // Start the polling loop
+        pollHealth();
 
         // Crash Trigger
         crashBtn.addEventListener('click', async () => {
             if (isCrashing) return;
+            
+            // 1. Immediately engage hyper-polling mode
             isCrashing = true;
             
             crashBtn.disabled = true;

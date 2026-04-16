@@ -21,10 +21,10 @@ router.post('/api/trigger-crash', (req, res) => {
     // 1. Tell the browser we received the command successfully
     res.status(200).json({ status: 'crashing', message: 'Initiating fatal process.exit(1)...' });
     
-    // 2. Actually pull the plug 500ms later
+    // 2. Pull the plug instantly after the response goes on the wire
     setTimeout(() => {
         process.exit(1);
-    }, 500);
+    }, 50);
 });
 
 // 2. The Observability Demo
