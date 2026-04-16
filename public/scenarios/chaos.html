@@ -5,45 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resilience Demo | 3 Dogs and a Frog</title>
     
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png" onerror="this.onerror=null; this.href='/favicon.ico'">
     
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333; display: flex; flex-direction: column; align-items: center; margin: 0; min-height: 100vh; }
         
-        /* Branding Header */
-        .brand-header { margin-bottom: 20px; text-align: center; }
-        .brand-header h2 { margin: 0; color: #2c3e50; font-size: 1.5rem; letter-spacing: 1px; }
-        .brand-header span { color: #27ae60; }
+        /* Enterprise Branding Header */
+        .app-header { width: 100%; background-color: #1a1a1a; padding: 15px 0; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 40px; }
+        .brand-logo { max-height: 60px; width: auto; object-fit: contain; }
+        /* Fallback text styling if the image path is wrong */
+        .app-header a { text-decoration: none; color: #fff; font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
 
-        .dashboard { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 550px; width: 100%; }
-        h1 { margin-top: 0; color: #1a1a1a; font-size: 1.8rem; }
-        p { color: #666; margin-bottom: 25px; }
+        .dashboard { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 600px; width: 90%; margin-bottom: 40px; }
+        h1 { margin-top: 0; color: #2c3e50; font-size: 1.8rem; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        p { color: #666; margin-bottom: 25px; line-height: 1.5; }
         
-        .status-badge { display: inline-block; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; margin: 10px 0 25px 0; transition: all 0.3s ease; }
+        .status-badge { display: inline-block; padding: 12px 25px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; margin: 10px 0 30px 0; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .healthy { background-color: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
         .offline { background-color: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
         
-        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 15px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 6px rgba(220, 53, 69, 0.3); width: 100%; }
-        .btn-danger:hover { background-color: #c82333; }
-        .btn-danger:active { transform: translateY(2px); }
-        .btn-danger:disabled { cursor: not-allowed; }
+        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 18px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4); width: 100%; letter-spacing: 1px;}
+        .btn-danger:hover { background-color: #c82333; transform: translateY(-1px); }
+        .btn-danger:active { transform: translateY(2px); box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4); }
+        .btn-danger:disabled { cursor: not-allowed; background-color: #6c757d; box-shadow: none; opacity: 0.8; }
 
         /* Terminal & Controls */
-        .terminal-container { margin-top: 25px; text-align: left; }
-        .terminal-controls { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #555; margin-bottom: 5px; font-weight: bold; }
-        .pause-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; }
-        .log-window { background: #1e1e1e; color: #00ff00; font-family: "Courier New", Courier, monospace; padding: 15px; border-radius: 8px; height: 180px; overflow-y: auto; font-size: 0.85rem; line-height: 1.4; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+        .terminal-container { margin-top: 35px; text-align: left; }
+        .terminal-controls { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #555; margin-bottom: 8px; font-weight: 600; padding: 0 5px; }
+        .pause-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; background: #eee; padding: 5px 10px; border-radius: 5px; transition: background 0.2s;}
+        .pause-toggle:hover { background: #e0e0e0; }
+        .pause-toggle input { cursor: pointer; }
+        .log-window { background: #1e1e1e; color: #00ff00; font-family: "Courier New", Courier, monospace; padding: 15px; border-radius: 8px; height: 220px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6); border: 1px solid #333; }
+        
+        /* Custom Scrollbar for Terminal */
+        .log-window::-webkit-scrollbar { width: 8px; }
+        .log-window::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 4px; }
+        .log-window::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        .log-window::-webkit-scrollbar-thumb:hover { background: #555; }
     </style>
 </head>
 <body>
 
-    <div class="brand-header">
-        <h2>🏕️ 3 Dogs <span>and a</span> Frog</h2>
-    </div>
+    <header class="app-header">
+        <a href="/">
+            <img src="/images/logo.jpg" alt="3 Dogs and a Frog" class="brand-logo" onerror="this.outerHTML='<span>🏕️ 3 Dogs and a Frog</span>'">
+        </a>
+    </header>
 
     <div class="dashboard">
-        <h1>Chaos Engine</h1>
+        <h1>System Resilience Test</h1>
         <p>Demonstrating automated Docker recovery and zero-trust edge routing under catastrophic failure conditions.</p>
         
         <div id="statusBadge" class="status-badge healthy">
@@ -54,8 +65,8 @@
 
         <div class="terminal-container">
             <div class="terminal-controls">
-                <span>System Logs</span>
-                <label class="pause-toggle">
+                <span>>_ Live Diagnostic Logs</span>
+                <label class="pause-toggle" title="Pause auto-scrolling to review logs">
                     <input type="checkbox" id="pauseAutoScroll"> Pause Auto-Scroll
                 </label>
             </div>
@@ -75,7 +86,7 @@
         let isCrashing = false;
         let lastUptime = 0; 
         let logLines = ["> System initialized...", "> Polling heartbeat endpoint..."];
-        const MAX_LOG_LINES = 100; // Increased buffer so you can actually scroll back
+        const MAX_LOG_LINES = 100;
 
         function log(message) {
             const time = new Date().toLocaleTimeString();
@@ -83,15 +94,20 @@
             
             if (logLines.length > MAX_LOG_LINES) logLines.shift();
             
+            // 1. Capture the exact scroll position BEFORE modifying the DOM
+            const currentScrollTop = logWindow.scrollTop;
+            
+            // 2. Update the DOM (this naturally resets scroll position in many browsers)
             logWindow.innerHTML = logLines.join('<br>');
             
-            // Only auto-scroll to the bottom if the pause checkbox is NOT checked
+            // 3. Either force it to the bottom, or restore the captured scroll position
             if (!pauseToggle.checked) {
                 logWindow.scrollTop = logWindow.scrollHeight;
+            } else {
+                logWindow.scrollTop = currentScrollTop;
             }
         }
 
-        // Dynamic Poller
         async function pollHealth() {
             try {
                 const response = await fetch(`/api/health?t=${Date.now()}`);
@@ -99,7 +115,6 @@
                 if (response.ok) {
                     const data = await response.json();
                     
-                    // 1. Check for a literal server resurrection (Uptime Reset)
                     if (lastUptime > 0 && data.uptime < lastUptime) {
                         log(`⚠️ CRASH VERIFIED: Uptime plummeted from ${lastUptime.toFixed(1)}s to ${data.uptime.toFixed(1)}s`);
                         
@@ -112,12 +127,10 @@
                     
                     lastUptime = data.uptime;
 
-                    // 2. Normal Logging
                     if (!isCrashing) {
                         log(`PING /api/health -> 200 OK (Uptime: ${data.uptime.toFixed(1)}s)`);
                     }
                     
-                    // 3. Recovery State Machine
                     if (statusBadge.classList.contains('offline') || isCrashing) {
                         if (data.uptime < 5) {
                             statusBadge.className = 'status-badge healthy';
@@ -125,7 +138,6 @@
                             
                             crashBtn.disabled = false;
                             crashBtn.innerText = '☢️ INITIATE FATAL CRASH';
-                            crashBtn.style.opacity = '1';
                             
                             isCrashing = false; 
                             log('SYSTEM RECOVERED: Docker container restarted successfully.');
@@ -148,19 +160,15 @@
             }
         }
 
-        // Start the polling loop
         pollHealth();
 
-        // Crash Trigger
         crashBtn.addEventListener('click', async () => {
             if (isCrashing) return;
             
             isCrashing = true;
             crashBtn.disabled = true;
             crashBtn.innerText = '💥 CRASH IN PROGRESS...';
-            crashBtn.style.opacity = '0.5';
             
-            // Automatically un-pause the terminal on crash initiation so you can see it happen live
             pauseToggle.checked = false; 
             
             log('WARNING: Sending kill command to Node.js backend...');
