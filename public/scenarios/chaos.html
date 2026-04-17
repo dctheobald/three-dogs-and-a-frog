@@ -10,36 +10,37 @@
     <link rel="stylesheet" href="/styles.css">
     
     <style>
-        body { background-color: #f4f7f6; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding-bottom: 50px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #f4f7f6; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding-bottom: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         
-        /* Left-aligned Header */
-        .chaos-header { width: 100%; background-color: #ffffff; padding: 15px 5%; display: flex; align-items: center; gap: 30px; border-bottom: 1px solid #e5e5e5; margin-bottom: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); box-sizing: border-box; }
+        /* Left-aligned Header - Tightened Vertical Spacing */
+        .chaos-header { width: 100%; background-color: #ffffff; padding: 10px 5%; display: flex; align-items: center; gap: 30px; border-bottom: 1px solid #e5e5e5; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); box-sizing: border-box; }
         .logo-link { flex-shrink: 0; }
-        .chaos-header img { max-height: 70px; width: auto; object-fit: contain; }
+        .chaos-header img { max-height: 60px; width: auto; object-fit: contain; }
         .header-title-group { text-align: left; border-left: 2px solid #eee; padding-left: 30px; flex-grow: 1; }
-        .header-title-group h1 { margin: 0 0 5px 0; color: #2c3e50; font-size: 1.6rem; }
-        .header-title-group p { margin: 0; color: #666; font-size: 0.95rem; line-height: 1.4; max-width: 800px; }
+        .header-title-group h1 { margin: 0 0 2px 0; color: #2c3e50; font-size: 1.5rem; }
+        .header-title-group p { margin: 0; color: #666; font-size: 0.9rem; line-height: 1.4; max-width: 800px; }
 
-        .chaos-dashboard { background: white; padding: 35px 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 1000px; width: 95%; box-sizing: border-box; }
+        /* Tighter Padding on the Main Box */
+        .chaos-dashboard { background: white; padding: 20px 40px 30px 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 1000px; width: 95%; box-sizing: border-box; }
         
-        /* Horizontal Control Row */
-        .control-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #f8f9fa; padding: 20px 30px; border-radius: 10px; border: 1px solid #e9ecef; margin-bottom: 20px; }
+        /* Horizontal Control Row - Tightened Padding & Margins */
+        .control-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #f8f9fa; padding: 15px 30px; border-radius: 10px; border: 1px solid #e9ecef; margin-bottom: 15px; }
         
-        .status-badge { display: inline-block; padding: 12px 25px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 0; }
+        .status-badge { display: inline-block; padding: 10px 25px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 0; }
         .status-badge.healthy { background-color: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
         .status-badge.offline { background-color: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
         .status-badge.paused { background-color: #e2e3e5; color: #383d41; border: 2px solid #d6d8db; }
         
-        .chaos-btn { background-color: #dc3545; color: white; border: none; padding: 18px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4); width: 100%; max-width: 350px; letter-spacing: 1px; margin: 0; }
+        .chaos-btn { background-color: #dc3545; color: white; border: none; padding: 15px 30px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4); width: 100%; max-width: 350px; letter-spacing: 1px; margin: 0; }
         .chaos-btn:hover { background-color: #c82333; transform: translateY(-1px); }
         .chaos-btn:active { transform: translateY(2px); box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4); }
         .chaos-btn:disabled { cursor: not-allowed; background-color: #6c757d; box-shadow: none; opacity: 0.8; }
 
         /* Perfectly Aligned Grid */
-        .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 25px; }
+        .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 10px; }
         @media(max-width: 850px) { 
             .demo-grid { grid-template-columns: 1fr; } 
-            .chaos-header { flex-direction: column; text-align: center; gap: 15px; } 
+            .chaos-header { flex-direction: column; text-align: center; gap: 10px; padding-top: 15px; } 
             .header-title-group { border-left: none; padding-left: 0; text-align: center; } 
             .control-row { flex-direction: column; text-align: center; }
         }
@@ -52,7 +53,8 @@
         .toggle-btn { display: flex; align-items: center; gap: 5px; cursor: pointer; background: #eee; padding: 5px 10px; border-radius: 5px; transition: background 0.2s; user-select: none; font-weight: normal; }
         .toggle-btn:hover { background: #e0e0e0; }
         
-        .log-window { background: #1e1e1e; color: #00ff00; font-family: "Courier New", Courier, monospace; padding: 15px; border-radius: 8px; height: 380px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6); border: 1px solid #333; box-sizing: border-box; }
+        /* Adjusted height from 380px to 340px to prevent page scrolling */
+        .log-window { background: #1e1e1e; color: #00ff00; font-family: "Courier New", Courier, monospace; padding: 15px; border-radius: 8px; height: 340px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6); border: 1px solid #333; box-sizing: border-box; }
         .log-window div { padding: 2px 0; margin: 0; }
         
         .log-window::-webkit-scrollbar { width: 8px; }
@@ -60,7 +62,8 @@
         .log-window::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
         .log-window::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        .iframe-container { border: 2px solid #e5e5e5; border-radius: 8px; height: 380px; background: #ffffff; overflow: hidden; position: relative; box-sizing: border-box; }
+        /* Adjusted height to match terminal */
+        .iframe-container { border: 2px solid #e5e5e5; border-radius: 8px; height: 340px; background: #ffffff; overflow: hidden; position: relative; box-sizing: border-box; }
         .iframe-container iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
     </style>
 </head>
@@ -153,7 +156,6 @@
             if (!e.target.checked) renderLogs();
         });
 
-        // Initialize with default paused messaging
         log('System initialized...', 'success');
         log('Health polling suspended to conserve resources. Uncheck or initiate crash to begin.', 'warning');
 
@@ -238,7 +240,6 @@
             previewStatus.style.color = '#dc3545';
             previewStatus.innerText = '502 Gateway Error';
             
-            // THE FIX: Wait a fraction of a second before reloading the iframe so the container has time to die
             setTimeout(() => {
                 storeframe.src = '/?nocache=' + Date.now();
             }, 150);
