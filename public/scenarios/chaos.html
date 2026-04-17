@@ -12,7 +12,6 @@
     <style>
         body { background-color: #f4f7f6; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding-bottom: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         
-        /* Left-aligned Header - Tightened Vertical Spacing */
         .chaos-header { width: 100%; background-color: #ffffff; padding: 10px 5%; display: flex; align-items: center; gap: 30px; border-bottom: 1px solid #e5e5e5; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); box-sizing: border-box; }
         .logo-link { flex-shrink: 0; }
         .chaos-header img { max-height: 60px; width: auto; object-fit: contain; }
@@ -20,10 +19,8 @@
         .header-title-group h1 { margin: 0 0 2px 0; color: #2c3e50; font-size: 1.5rem; }
         .header-title-group p { margin: 0; color: #666; font-size: 0.9rem; line-height: 1.4; max-width: 800px; }
 
-        /* Tighter Padding on the Main Box */
         .chaos-dashboard { background: white; padding: 20px 40px 30px 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 1000px; width: 95%; box-sizing: border-box; }
         
-        /* Horizontal Control Row - Tightened Padding & Margins */
         .control-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #f8f9fa; padding: 15px 30px; border-radius: 10px; border: 1px solid #e9ecef; margin-bottom: 15px; }
         
         .status-badge { display: inline-block; padding: 10px 25px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 0; }
@@ -36,7 +33,6 @@
         .chaos-btn:active { transform: translateY(2px); box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4); }
         .chaos-btn:disabled { cursor: not-allowed; background-color: #6c757d; box-shadow: none; opacity: 0.8; }
 
-        /* Perfectly Aligned Grid */
         .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 10px; }
         @media(max-width: 850px) { 
             .demo-grid { grid-template-columns: 1fr; } 
@@ -53,7 +49,6 @@
         .toggle-btn { display: flex; align-items: center; gap: 5px; cursor: pointer; background: #eee; padding: 5px 10px; border-radius: 5px; transition: background 0.2s; user-select: none; font-weight: normal; }
         .toggle-btn:hover { background: #e0e0e0; }
         
-        /* Adjusted height from 380px to 340px to prevent page scrolling */
         .log-window { background: #1e1e1e; color: #00ff00; font-family: "Courier New", Courier, monospace; padding: 15px; border-radius: 8px; height: 340px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6); border: 1px solid #333; box-sizing: border-box; }
         .log-window div { padding: 2px 0; margin: 0; }
         
@@ -62,7 +57,6 @@
         .log-window::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
         .log-window::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* Adjusted height to match terminal */
         .iframe-container { border: 2px solid #e5e5e5; border-radius: 8px; height: 340px; background: #ffffff; overflow: hidden; position: relative; box-sizing: border-box; }
         .iframe-container iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
     </style>
@@ -130,6 +124,16 @@
         
         let logBuffer = [];
 
+        // Realistic Fastly 502 Error Mockup for the iframe
+        const error502HTML = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding-top: 25%; color: #333; background: #fff; height: 100vh;">
+                <h1 style="font-size: 2.5rem; margin-bottom: 10px; color: #dc3545;">502 Bad Gateway</h1>
+                <p style="font-size: 1.1rem; color: #666; max-width: 80%; margin: 0 auto;">The server encountered a temporary error and could not complete your request.</p>
+                <hr style="width: 50px; margin: 25px auto; border: 1px solid #ddd;">
+                <p style="font-size: 0.85rem; color: #999; text-transform: uppercase; letter-spacing: 1px;">Fastly Edge Network</p>
+            </div>
+        `;
+
         function log(message, level = 'info') {
             const time = new Date().toLocaleTimeString();
             let color = '#00ff00'; 
@@ -142,9 +146,7 @@
             
             if (logBuffer.length > MAX_LOG_LINES) logBuffer.shift();
             
-            if (!pauseLogsToggle.checked) {
-                renderLogs();
-            }
+            if (!pauseLogsToggle.checked) renderLogs();
         }
 
         function renderLogs() {
@@ -197,9 +199,13 @@
                             isCrashing = false; 
                             log(`SYSTEM RECOVERED: Docker container auto-restarted in ${recoveryTime} seconds.`, 'success');
                             
+                            // RESTORE THE IFRAME: Remove the injected code and point back to the real URL
                             previewStatus.style.color = '#28a745';
                             previewStatus.innerText = 'Restored';
-                            setTimeout(() => { storeframe.src = '/'; }, 1000);
+                            setTimeout(() => { 
+                                storeframe.removeAttribute('srcdoc');
+                                storeframe.src = '/'; 
+                            }, 800);
                         }
                     } else if (statusBadge.classList.contains('paused')) {
                         statusBadge.className = 'status-badge healthy';
@@ -240,8 +246,10 @@
             previewStatus.style.color = '#dc3545';
             previewStatus.innerText = '502 Gateway Error';
             
+            // INJECT THE ERROR: Use srcdoc to bypass browser network error blanking
             setTimeout(() => {
-                storeframe.src = '/?nocache=' + Date.now();
+                storeframe.removeAttribute('src'); // Stop it from trying to load the real URL
+                storeframe.srcdoc = error502HTML; // Inject the mock Fastly error page
             }, 150);
             
             log('WARNING: Sending kill command to Node.js backend...', 'warning');
