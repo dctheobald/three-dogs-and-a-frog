@@ -12,39 +12,46 @@
     <style>
         body { background-color: #f4f7f6; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding-bottom: 50px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         
-        /* Unified Header */
-        .chaos-header { width: 100%; background-color: #ffffff; padding: 15px 40px; display: flex; align-items: center; justify-content: center; gap: 30px; border-bottom: 1px solid #e5e5e5; margin-bottom: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); box-sizing: border-box; }
+        /* Left-aligned Header */
+        .chaos-header { width: 100%; background-color: #ffffff; padding: 15px 5%; display: flex; align-items: center; gap: 30px; border-bottom: 1px solid #e5e5e5; margin-bottom: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); box-sizing: border-box; }
+        .logo-link { flex-shrink: 0; }
         .chaos-header img { max-height: 70px; width: auto; object-fit: contain; }
-        .header-title-group { text-align: left; border-left: 2px solid #eee; padding-left: 30px; }
+        .header-title-group { text-align: left; border-left: 2px solid #eee; padding-left: 30px; flex-grow: 1; }
         .header-title-group h1 { margin: 0 0 5px 0; color: #2c3e50; font-size: 1.6rem; }
-        .header-title-group p { margin: 0; color: #666; font-size: 0.95rem; line-height: 1.4; max-width: 600px; }
+        .header-title-group p { margin: 0; color: #666; font-size: 0.95rem; line-height: 1.4; max-width: 800px; }
 
-        .chaos-dashboard { background: white; padding: 35px 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 1000px; width: 95%; box-sizing: border-box; }
+        .chaos-dashboard { background: white; padding: 35px 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 1000px; width: 95%; box-sizing: border-box; }
         
-        .status-badge { display: inline-block; padding: 12px 25px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; margin: 0 0 25px 0; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        /* Horizontal Control Row */
+        .control-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #f8f9fa; padding: 20px 30px; border-radius: 10px; border: 1px solid #e9ecef; margin-bottom: 20px; }
+        
+        .status-badge { display: inline-block; padding: 12px 25px; border-radius: 50px; font-weight: bold; font-size: 1.2rem; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 0; }
         .status-badge.healthy { background-color: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
         .status-badge.offline { background-color: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
         .status-badge.paused { background-color: #e2e3e5; color: #383d41; border: 2px solid #d6d8db; }
         
-        .chaos-btn { background-color: #dc3545; color: white; border: none; padding: 18px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4); width: 100%; max-width: 400px; letter-spacing: 1px; }
+        .chaos-btn { background-color: #dc3545; color: white; border: none; padding: 18px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4); width: 100%; max-width: 350px; letter-spacing: 1px; margin: 0; }
         .chaos-btn:hover { background-color: #c82333; transform: translateY(-1px); }
         .chaos-btn:active { transform: translateY(2px); box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4); }
         .chaos-btn:disabled { cursor: not-allowed; background-color: #6c757d; box-shadow: none; opacity: 0.8; }
 
         /* Perfectly Aligned Grid */
-        .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 40px; text-align: left; }
-        @media(max-width: 850px) { .demo-grid { grid-template-columns: 1fr; } .chaos-header { flex-direction: column; text-align: center; gap: 15px; } .header-title-group { border-left: none; padding-left: 0; text-align: center; } }
+        .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 25px; }
+        @media(max-width: 850px) { 
+            .demo-grid { grid-template-columns: 1fr; } 
+            .chaos-header { flex-direction: column; text-align: center; gap: 15px; } 
+            .header-title-group { border-left: none; padding-left: 0; text-align: center; } 
+            .control-row { flex-direction: column; text-align: center; }
+        }
 
         .panel-container { display: flex; flex-direction: column; }
         
-        /* Standardized Header Height ensures exact vertical alignment */
         .panel-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #555; font-weight: 600; padding: 0 5px; height: 35px; margin-bottom: 8px; }
         
         .toggle-group { display: flex; gap: 10px; }
         .toggle-btn { display: flex; align-items: center; gap: 5px; cursor: pointer; background: #eee; padding: 5px 10px; border-radius: 5px; transition: background 0.2s; user-select: none; font-weight: normal; }
         .toggle-btn:hover { background: #e0e0e0; }
         
-        /* Identical box dimensions */
         .log-window { background: #1e1e1e; color: #00ff00; font-family: "Courier New", Courier, monospace; padding: 15px; border-radius: 8px; height: 380px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6); border: 1px solid #333; box-sizing: border-box; }
         .log-window div { padding: 2px 0; margin: 0; }
         
@@ -53,14 +60,14 @@
         .log-window::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
         .log-window::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        .iframe-container { border: 2px solid #e5e5e5; border-radius: 8px; height: 380px; background: #f8f9fa; overflow: hidden; position: relative; box-sizing: border-box; }
+        .iframe-container { border: 2px solid #e5e5e5; border-radius: 8px; height: 380px; background: #ffffff; overflow: hidden; position: relative; box-sizing: border-box; }
         .iframe-container iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <header class="chaos-header">
-        <a href="/"><img src="/images/logo.jpg" alt="3 Dogs and a Frog"></a>
+        <a href="/" class="logo-link"><img src="/images/logo.jpg" alt="3 Dogs and a Frog"></a>
         <div class="header-title-group">
             <h1><i class="bi bi-shield-check"></i> System Resilience Test</h1>
             <p>Demonstrating automated Docker recovery and zero-trust edge routing under catastrophic failure conditions.</p>
@@ -69,11 +76,10 @@
 
     <div class="chaos-dashboard">
         
-        <div id="statusBadge" class="status-badge healthy">
-            <i class="bi bi-check-circle-fill"></i> Server Online
-        </div>
-
-        <div>
+        <div class="control-row">
+            <div id="statusBadge" class="status-badge paused">
+                <i class="bi bi-pause-circle-fill"></i> Polling Suspended
+            </div>
             <button id="crashBtn" class="chaos-btn"><i class="bi bi-lightning-charge-fill"></i> INITIATE FATAL CRASH</button>
         </div>
 
@@ -83,7 +89,7 @@
                     <span>>_ Diagnostic Logs</span>
                     <div class="toggle-group">
                         <label class="toggle-btn" title="Suspend backend pings">
-                            <input type="checkbox" id="pauseHealthToggle"> <i class="bi bi-stop-circle"></i> Suspend Polling
+                            <input type="checkbox" id="pauseHealthToggle" checked> <i class="bi bi-stop-circle"></i> Suspend Polling
                         </label>
                         <label class="toggle-btn" title="Freeze UI to review logs">
                             <input type="checkbox" id="pauseAutoScroll"> <i class="bi bi-pause-fill"></i> Pause Logs
@@ -147,8 +153,9 @@
             if (!e.target.checked) renderLogs();
         });
 
+        // Initialize with default paused messaging
         log('System initialized...', 'success');
-        log('Awaiting telemetry...', 'info');
+        log('Health polling suspended to conserve resources. Uncheck or initiate crash to begin.', 'warning');
 
         async function pollHealth() {
             if (pauseHealthToggle.checked) {
@@ -230,7 +237,11 @@
             
             previewStatus.style.color = '#dc3545';
             previewStatus.innerText = '502 Gateway Error';
-            storeframe.src = '/?nocache=' + Date.now();
+            
+            // THE FIX: Wait a fraction of a second before reloading the iframe so the container has time to die
+            setTimeout(() => {
+                storeframe.src = '/?nocache=' + Date.now();
+            }, 150);
             
             log('WARNING: Sending kill command to Node.js backend...', 'warning');
             
