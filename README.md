@@ -35,7 +35,7 @@ The following diagram illustrates the automated deployment pipeline and the glob
 ---
 
 ## ⚡ CDN & Caching Logic (Fastly Edge)
-Our edge configuration is defined in `retail-app/infra/main.tf` to ensure high performance and origin shielding through custom VCL.
+Our edge configuration is defined in `infra/main.tf` to ensure high performance and origin shielding through custom VCL.
 
 ### Cache Rules:
 * **Collapsed Redirects:** HTTP and Apex domain requests are redirected to Secure WWW in a single hop to reduce latency.
@@ -143,10 +143,10 @@ Once running, navigate to **http://localhost:3000** in your browser to access th
 * **Verification:** Check GitHub Actions tab for success. Changes are instant.
 
 ### 2. Infrastructure & Networking Changes (VM, Firewall, CDN)
-All cloud resources are managed via Terraform in the `retail-app/infra` directory.
+All cloud resources are managed via Terraform in the `infra` directory.
 * **Action:**
     ```zsh
-    cd retail-app/infra
+    cd infra
     terraform plan    # Preview what will change
     terraform apply   # Execute changes (type 'yes')
     ```
