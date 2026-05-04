@@ -159,18 +159,17 @@ All cloud resources are managed via Terraform in the `retail-app/infra` director
 ---
 
 ## 📁 Project Structure
-* `retail-app/`: Core application and infrastructure directory.
-    * `infra/`: Terraform HCL files (Providers, Variables, and Resources).
-    * `public/`: Static assets (images, CSS).
-    * `server.js`: Express.js server logic and pure backend entry point.
+* `infra/`: Terraform HCL files (Providers, Variables, and Resources).
+* `public/`: Static assets (images, CSS).
+* `server.js`: Express.js server logic and pure backend entry point.
 * `.github/workflows/`: YAML definitions for CI/CD and Fastly Purging.
 * `Dockerfile`: Container instructions for the highly-secured Node.js environment.
 
 ---
 
 ## ⚠️ Security Requirements
-* **Local Secrets:** `retail-app/infra/terraform.tfvars` (Contains GCP Project ID and Fastly API Key). This file is ignored by Git.
+* **Local Secrets:** `infra/terraform.tfvars` (Contains GCP Project ID and Fastly API Key). This file is ignored by Git.
 * **GCP Secrets:** `STRIPE_SECRET_KEY` is stored in GCP Secret Manager and injected at runtime via the VM's startup script.
 * **CI Secrets:** `FASTLY_API_KEY` and `FASTLY_SERVICE_ID` must be configured in GitHub Repository Secrets.
 * **Terraform Metadata:** The `app_image` tag on the GCP VM is dynamically injected by GitHub Actions. Terraform explicitly ignores this tag using a `lifecycle` block to prevent overwriting the active container image.
-* **Docker Security:** The `retail-app` container runs strictly as the non-root `node` user. A strict `.dockerignore` file ensures local `.env` and `infra/` files never leak into the production build.
+* **Docker Security:** The application container runs strictly as the non-root `node` user. A strict `.dockerignore` file ensures local `.env` and `infra/` files never leak into the production build.
