@@ -46,23 +46,92 @@ Our edge configuration is defined in `retail-app/infra/main.tf` to ensure high p
 ---
 
 ## 🛠️ Local Development
-To run the storefront on your machine for testing content changes:
+Follow these steps to replicate the "3 Dogs & a Frog" local build and test environment on a new macOS machine.
 
-1.  **Prerequisites:** Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Node.js.
-2.  **Setup Environment (`.envrc`):** We use `direnv` and an `.envrc` file to manage local variables. 
-    > **CRITICAL:** Never place Terraform variable overrides (e.g., `export TF_VAR_node_env="development"`) in your `.envrc` file, as this will poison the production VM state. Your file should only contain:
-    > ```bash
-    > export FASTLY_API_KEY="your-key-here"
-    > export STRIPE_SECRET_KEY="sk_test_..."
-    > export PORT=3000
-    > export NODE_ENV="development"
-    > ```
-3.  **Spin up the app:**
-    ```zsh
-    npm install
-    npm start
-    ```
-4.  **Access:** Open `http://localhost:3000` in your browser.
+### 1. Install Prerequisites
+This project relies on Homebrew, Node.js, `direnv` for secret management, and Docker.
+
+**Install Homebrew** (if not already installed):
+```bash
+/bin/bash -c "$(curl -fsSL [https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh](https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh))"
+```
+
+**Install Core Dependencies:**
+```bash
+brew install node direnv gh
+```
+
+**Configure `direnv` for Zsh:**
+Hook `direnv` into your shell so it automatically loads environment variables when entering the directory:
+```bash
+echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Install Docker Desktop:**
+Download and install [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/). Ensure the application is open and running in the background.
+
+### 2. Authenticate and Pull the Codebase
+Log in to the GitHub CLI to authorize the machine, configure your Git identity, and clone the repository.
+
+```bash
+# Authenticate (Select HTTPS and Login via Browser)
+gh auth login
+
+# Set your Git identity
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+
+# Clone the repository
+git clone [https://github.com/dctheobald/three-dogs-and-a-frog.git](https://github.com/dctheobald/three-dogs-and-a-frog.git)
+cd three-dogs-and-a-frog
+```
+
+### 3. Recreate Local Secrets
+To keep production secrets secure, `.env` files are ignored by Git. You must manually recreate them.
+
+**1. Create the `.env` file:**
+Create a `.env` file in the root of the project (`three-dogs-and-a-frog/`) and add your local testing keys (do *not* use the `export` keyword here):
+```env
+FASTLY_API_KEY="your_fastly_key_here"
+STRIPE_SECRET_KEY="sk_test_..."
+PORT=3000
+NODE_ENV="development"
+```
+
+**2. Configure `.envrc` for direnv:**
+Create or update the `.envrc` file in the root directory to simply read the `.env` file:
+```bash
+echo 'dotenv' > .envrc
+```
+
+**3. Authorize the directory:**
+Tell `direnv` to securely load the variables:
+```bash
+direnv allow
+```
+
+### 4. Spin Up the Environment
+You have two options for running the storefront locally.
+
+**Option A: The Docker Way (Full Stack Replication)**
+Use standard Docker commands to build and run the container locally, injecting the secrets from your new `.env` file.
+```bash
+# 1. Build the image
+docker build -t three-dogs-app .
+
+# 2. Run the container
+docker run -p 3000:3000 --env-file .env three-dogs-app
+```
+
+**Option B: The Node Way (Rapid UI Testing)**
+If you are rapidly testing CSS or HTML changes natively and want to bypass Docker, run the Express server directly:
+```bash
+npm install
+npm start
+```
+
+Once running, navigate to **http://localhost:3000** in your browser to access the storefront.
 
 ---
 
