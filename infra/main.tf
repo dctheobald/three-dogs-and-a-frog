@@ -172,10 +172,18 @@ resource "fastly_service_dictionary_items" "demo_secrets_items" {
 # 3. DOMAINS AND ROUTING
 resource "fastly_domain" "apex" {
   fqdn = var.domain_name
+
+  lifecycle {
+    ignore_changes = [service_id]
+  }
 }
 
 resource "fastly_domain" "www" {
   fqdn = "www.${var.domain_name}"
+
+  lifecycle {
+    ignore_changes = [service_id]
+  }
 }
 
 resource "fastly_domain_service_link" "apex_link" {
