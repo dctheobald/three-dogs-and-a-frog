@@ -24,12 +24,19 @@ variable "app_image" {
 }
 
 variable "domain_name" {
-  type        = string
-  default     = "3dogsandafrog.com"
+  type    = string
+  default = "3dogsandafrog.com"
 }
 
 variable "node_env" {
   type        = string
   default     = "production"
   description = "Switch between 'production' and 'development'"
+}
+
+# --- NEW: Fastly Edge Authentication Secret ---
+variable "demo_auth_base64_secret" {
+  description = "Base64 encoded string of username:password for Enterprise Demos"
+  type        = string
+  sensitive   = true
 }

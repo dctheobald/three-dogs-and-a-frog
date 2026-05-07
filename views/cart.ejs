@@ -1,0 +1,22 @@
+<%- include('partials/header', { title: 'Home | 3 Dogs and a Frog' }) %>
+    <main>
+        <div class="cart-wrapper">
+            <h1>Your Basecamp Cart</h1>
+            <div class="cart-grid">
+                
+                <div id="cart-contents" class="cart-items-list">
+                    </div>
+
+                <div class="order-summary">
+                    <h2 style="margin-top: 0; font-size: 1.25rem; font-weight: 800; text-transform: uppercase;">Order Summary</h2>
+                    <div class="summary-row"><span>Shipping</span><span>Calculated at checkout</span></div>
+                    <div class="summary-row"><span>Taxes</span><span>Calculated at checkout</span></div>
+                    <div class="summary-total"><span>Total</span><span>$<span id="cart-total">0.00</span></span></div>
+                    
+                    <button class="btn-checkout" id="checkout-btn">Proceed to Checkout</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+<%- include('partials/footer') %>

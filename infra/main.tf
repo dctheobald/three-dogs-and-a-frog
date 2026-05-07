@@ -1,4 +1,4 @@
-# 1. THE GCP VM
+# 1. THE GCP VM (Origin Server)
 resource "google_compute_instance" "retail_origin" {
   name         = "three-dog-one-frog-prod"
   machine_type = var.machine_type
@@ -21,24 +21,18 @@ resource "google_compute_instance" "retail_origin" {
     scopes = ["cloud-platform"]
   }
 
-metadata = {
+  metadata = {
     startup-script = <<-EOT
       #!/bin/bash
-      # 1. Point Docker to a writable directory on Container-Optimized OS
       export DOCKER_CONFIG=/tmp/.docker
       mkdir -p $DOCKER_CONFIG
 
-      # 2. Auth Docker to Artifact Registry
       docker-credential-gcr configure-docker --registries="us-central1-docker.pkg.dev"
-      
-      # 3. Create a shared Docker network
       docker network create frog-net || true
       
-      # 4. Clean up any old containers
       docker rm -f retail-app || true
       docker rm -f caddy-ssl || true
       
-      # 5. Run your Node App
       APP_IMAGE=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_image)
 
       docker run -d --name retail-app --network frog-net --restart always \
@@ -47,40 +41,75 @@ metadata = {
       -e NODE_ENV="${var.node_env}" \
       $APP_IMAGE
         
-      # 6. Run the Caddy SSL Proxy
       docker run -d --name caddy-ssl --network frog-net --restart always -p 443:443 \
         caddy:alpine caddy reverse-proxy --from https://www.${var.domain_name} --to http://retail-app:3000 --internal-certs
     EOT
   }
  
-# Tell Terraform to ignore changes made by GitHub Actions
    lifecycle {
      ignore_changes = [
        metadata["app_image"],
      ]
    }
- }
+}
 
-
-# 2.  THE FASTLY SERVICE (Notice: Domain blocks are removed)
+# 2. THE FASTLY SERVICE (Edge Compute & Security)
 resource "fastly_service_vcl" "retail_fastly" {
   name = "three-dogs-frog-store-production"
 
   backend {
-    address        = google_compute_instance.retail_origin.network_interface[0].access_config[0].nat_ip
-    name           = "gcp-origin-secure"
-    port           = 443
-    use_ssl        = true
-    ssl_check_cert = false
+    address          = google_compute_instance.retail_origin.network_interface[0].access_config[0].nat_ip
+    name             = "gcp-origin-secure"
+    port             = 443
+    use_ssl          = true
+    ssl_check_cert   = false
     ssl_sni_hostname = "www.${var.domain_name}"
   }
 
+  # --- NEW: Secure Dictionary for Demo Auth ---
+  dictionary {
+    name       = "demo_auth_secrets"
+    write_only = true
+  }
+
+  # --- NEW: Intercept /scenarios logic ---
+  snippet {
+    name     = "require-demo-auth"
+    type     = "recv"
+    priority = 90
+    content  = <<EOF
+  if (req.url ~ "^/scenarios") {
+    declare local var.expected_auth STRING;
+    set var.expected_auth = "Basic " + table.lookup(demo_auth_secrets, "demo_credentials");
+
+    if (!req.http.Authorization || req.http.Authorization != var.expected_auth) {
+      error 401 "Restricted Demo";
+    }
+  }
+EOF
+  }
+
+  # --- NEW: Generate basic auth prompt ---
+  snippet {
+    name     = "demo-auth-challenge"
+    type     = "error"
+    priority = 90
+    content  = <<EOF
+  if (obj.status == 401 && obj.response == "Restricted Demo") {
+    set obj.http.WWW-Authenticate = "Basic realm=""Enterprise Demos""";
+    set obj.http.Content-Type = "text/plain";
+    synthetic {"Authentication required to access Enterprise Demos."};
+    return (deliver);
+  }
+EOF
+  }
+
+  # Standard HTTPS redirection
   snippet {
     name     = "force-https-and-www"
     type     = "recv"
     priority = 100
     content  = <<EOF
-  # If it's HTTP OR if it's the apex domain, trigger the single redirect
   if (!req.http.Fastly-SSL || req.http.host == "${var.domain_name}") {
     error 801 "Redirect to Secure WWW";
   }
@@ -94,30 +123,22 @@ EOF
     content  = <<EOF
   if (obj.status == 801) {
     set obj.status = 301;
-    # Hardcode the final destination scheme and subdomain
     set obj.http.Location = "https://www.${var.domain_name}" req.url;
     return(deliver);
   }
 EOF
   }
 
-snippet {
+  snippet {
     name     = "force-cache-static-assets"
     type     = "fetch"
     priority = 100
     content  = <<EOF
   if (req.url.ext ~ "^(jpg|jpeg|gif|png|webp|svg|css|js|JPG|JPEG|PNG)$") {
-    # 1. Strip cookies so Fastly doesn't panic and bypass the cache
     unset beresp.http.Set-Cookie;
-    
-    # 2. Strip Vary headers to prevent cache fragmentation
     unset beresp.http.Vary;
-
-    # 3. Force the TTL and tell the browser to cache it too
     set beresp.ttl = 86400s;
     set beresp.http.Cache-Control = "public, max-age=86400";
-    
-    # 4. Deliver immediately
     return(deliver);
   }
 EOF
@@ -126,7 +147,22 @@ EOF
   force_destroy = true
 }
 
-# 3. THE VERSIONLESS DOMAINS (The new API method)
+# --- NEW: Populate the Fastly Edge Dictionary ---
+resource "fastly_service_dictionary_items_v1" "demo_secrets_items" {
+  for_each = {
+    for d in fastly_service_vcl.retail_fastly.dictionary : d.name => d if d.name == "demo_auth_secrets"
+  }
+
+  service_id    = fastly_service_vcl.retail_fastly.id
+  dictionary_id = each.value.dictionary_id
+  manage_items  = true
+
+  items = {
+    "demo_credentials" = var.demo_auth_base64_secret 
+  }
+}
+
+# 3. DOMAINS AND ROUTING
 resource "fastly_domain" "apex" {
   fqdn = var.domain_name
 }
@@ -135,7 +171,6 @@ resource "fastly_domain" "www" {
   fqdn = "www.${var.domain_name}"
 }
 
-# 4. LINKING THE DOMAINS TO THE SERVICE
 resource "fastly_domain_service_link" "apex_link" {
   domain_id  = fastly_domain.apex.id
   service_id = fastly_service_vcl.retail_fastly.id

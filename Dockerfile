@@ -1,17 +1,27 @@
-FROM node:20-alpine
-WORKDIR /usr/src/app
+# Use a lightweight Node.js base image
+FROM node:18-alpine
 
-# Copy dependency files first to leverage Docker layer caching
-COPY package*.json ./
-RUN npm install --only=production
+# Set the working directory inside the container
+WORKDIR /app
 
-# Copy application code
-COPY . .
+# Copy package files first to leverage Docker layer caching
+COPY package.json package-lock.json ./
 
-# Switch to the restricted 'node' user for security
-USER node
+# Install dependencies (this will now include EJS)
+RUN npm install --production
 
-# Document the application port
+# Copy application logic
+COPY server.js ./
+COPY routes/ ./routes/
+
+# --- CRITICAL NEW LINE: Copy the EJS templates ---
+COPY views/ ./views/
+
+# Copy static assets (Images, CSS, JS)
+COPY public/ ./public/
+
+# Expose the application port
 EXPOSE 3000
 
-CMD [ "node", "server.js" ]
+# Start the server
+CMD ["node", "server.js"]

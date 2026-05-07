@@ -5,40 +5,48 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 
-// Middleware to serve static files and parse JSON data from the cart
-app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+// --- VIEW ENGINE SETUP ---
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+// Middleware to serve static files (CSS, JS, images)
+// Removed the { extensions: ['html'] } fallback since we use EJS routing now
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// --- ROUTERS ---
+// --- PAGE ROUTERS ---
+app.get('/', (req, res) => res.render('index', { title: 'Home | 3 Dogs and a Frog' }));
+app.get('/cart', (req, res) => res.render('cart', { title: 'Cart | 3 Dogs and a Frog' }));
+app.get('/shop', (req, res) => res.render('shop', { title: 'Shop Gear | 3 Dogs and a Frog' }));
+app.get('/success', (req, res) => res.render('success', { title: 'Success | 3 Dogs and a Frog' }));
+
+// --- SCENARIO ROUTERS ---
 const scenarioRoutes = require('./routes/scenarios');
-app.use('/', scenarioRoutes);
+app.use('/scenarios', scenarioRoutes);
 
 // --- STRIPE CHECKOUT ROUTE ---
 app.post('/create-checkout-session', async (req, res) => {
     try {
         const { cart } = req.body;
 
-        // Convert your cart items into the exact format Stripe requires
         const lineItems = cart.map(item => {
             return {
                 price_data: {
                     currency: 'usd',
                     product_data: {
                         name: item.name,
-                        images: [`https://www.3dogsandafrog.com${item.image}`], // Stripe needs absolute URLs for images
+                        images: [`https://www.3dogsandafrog.com${item.image}`], 
                     },
-                    unit_amount: Math.round(item.price * 100), // Stripe expects amounts in cents!
+                    unit_amount: Math.round(item.price * 100), 
                 },
                 quantity: item.quantity,
             };
         });
 
-        // Determine the domain for the return URLs
         const domain = process.env.NODE_ENV !== 'production' 
             ? 'http://localhost:3000' 
             : 'https://www.3dogsandafrog.com';
 
-        // Create the secure Stripe session
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             mode: 'payment',
@@ -47,7 +55,6 @@ app.post('/create-checkout-session', async (req, res) => {
             cancel_url: `${domain}/cart`,
         });
 
-        // Send the Stripe URL back to the frontend
         res.json({ url: session.url });
     } catch (error) {
         console.error("Stripe Error:", error);
@@ -55,9 +62,7 @@ app.post('/create-checkout-session', async (req, res) => {
     }
 });
 
-// 2. --- START SERVER ---
-// Always listen on the port provided by Docker (defaults to 3000)
-// Binding to '0.0.0.0' is required inside Docker to accept outside connections from Caddy
+// --- START SERVER ---
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {

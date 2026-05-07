@@ -1,50 +1,41 @@
 const express = require('express');
-const path = require('path');
 const router = express.Router();
 
-// Helper function to serve the correct HTML file
-const servePage = (res, filename) => {
-    res.sendFile(path.join(__dirname, '../public/scenarios', filename));
-};
+// ==========================================
+// SCENARIO UI ROUTES (Updated to use EJS)
+// ==========================================
 
-// --- ENTERPRISE DEMO ROUTES ---
-
-// 1. The Chaos Engine Demo (Resilience)
 router.get('/chaos', (req, res) => {
-    servePage(res, 'chaos.html');
+  // We use res.render() now, which automatically looks in the views/ directory
+  // and knows to append the .ejs extension!
+  res.render('scenarios/chaos'); 
 });
 
-// An API endpoint we'll use later to actually crash the server for the demo
-router.post('/api/trigger-crash', (req, res) => {
-    console.error("🔥 CHAOS DEMO: Intentional fatal error triggered by presenter!");
-    
-    // 1. Tell the browser we received the command successfully
-    res.status(200).json({ status: 'crashing', message: 'Initiating fatal process.exit(1)...' });
-    
-    // 2. Pull the plug instantly after the response goes on the wire
-    setTimeout(() => {
-        process.exit(1);
-    }, 50);
-});
-
-// 2. The Observability Demo
 router.get('/observability', (req, res) => {
-    servePage(res, 'observability.html');
+  res.render('scenarios/observability');
 });
 
-// 3. The Edge Security / WAF Demo
 router.get('/security', (req, res) => {
-    servePage(res, 'security.html');
+  res.render('scenarios/security');
 });
 
-// A simple heartbeat endpoint for the UI to poll
-router.get('/api/health', (req, res) => {
-    // 🛡️ Explicitly tell Fastly and the browser NOT to cache this response
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    
-    res.status(200).json({ status: 'healthy', uptime: process.uptime() });
+router.get('/deployment', (req, res) => {
+  res.render('scenarios/deployment');
+});
+
+
+// ==========================================
+// SCENARIO API ENDPOINTS (Do not change)
+// ==========================================
+
+router.post('/api/trigger-crash', (req, res) => {
+  console.log("CRITICAL: Intentional crash triggered via Demo UI.");
+  
+  // Send response before crashing so the UI doesn't hang
+  res.status(200).send({ message: "Crashing server..." }); 
+  
+  // Kill the process. Docker/Caddy will auto-recover this in production.
+  setTimeout(() => process.exit(1), 100); 
 });
 
 module.exports = router;
