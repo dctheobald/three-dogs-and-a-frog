@@ -59,7 +59,7 @@ Follow these steps to replicate the "3 Dogs & a Frog" local build and test envir
 
 1.  **Clone the Repository:**
     ```bash
-    git clone [https://github.com/dctheobald/three-dogs-and-a-frog.git](https://github.com/dctheobald/three-dogs-and-a-frog.git)
+    git clone https://github.com/dctheobald/three-dogs-and-a-frog.git
     ```
 
 2.  **Install Prerequisites:**
