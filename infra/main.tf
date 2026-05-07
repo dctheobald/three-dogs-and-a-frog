@@ -1,3 +1,11 @@
+# 0. Tell Terraform to grab state from Google Storage bucket
+terraform {
+  backend "gcs" {
+    bucket  = "three-dogs-tf-state"
+    prefix  = "terraform/state"
+  }
+}
+
 # 1. THE GCP VM (Origin Server)
 resource "google_compute_instance" "retail_origin" {
   name         = "three-dog-one-frog-prod"
@@ -68,8 +76,7 @@ resource "fastly_service_vcl" "retail_fastly" {
 
   # --- NEW: Secure Dictionary for Demo Auth ---
   dictionary {
-    name       = "demo_auth_secrets"
-    write_only = true
+    name       = "demo_auth_secrets_v2"
   }
 
   # --- NEW: Intercept /scenarios logic ---
@@ -80,7 +87,7 @@ resource "fastly_service_vcl" "retail_fastly" {
     content  = <<EOF
   if (req.url ~ "^/scenarios") {
     declare local var.expected_auth STRING;
-    set var.expected_auth = "Basic " + table.lookup(demo_auth_secrets, "demo_credentials");
+    set var.expected_auth = "Basic " + table.lookup(demo_auth_secrets_v2, "demo_credentials");
 
     if (!req.http.Authorization || req.http.Authorization != var.expected_auth) {
       error 401 "Restricted Demo";
@@ -148,9 +155,9 @@ EOF
 }
 
 # --- NEW: Populate the Fastly Edge Dictionary ---
-resource "fastly_service_dictionary_items_v1" "demo_secrets_items" {
+resource "fastly_service_dictionary_items" "demo_secrets_items" {
   for_each = {
-    for d in fastly_service_vcl.retail_fastly.dictionary : d.name => d if d.name == "demo_auth_secrets"
+    for d in fastly_service_vcl.retail_fastly.dictionary : d.name => d if d.name == "demo_auth_secrets_v2"
   }
 
   service_id    = fastly_service_vcl.retail_fastly.id
