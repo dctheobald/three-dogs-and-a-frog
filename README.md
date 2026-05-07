@@ -34,6 +34,15 @@ The following diagram illustrates the automated deployment pipeline and the glob
 
 ---
 
+## ☁️ Infrastructure State
+
+This project utilizes **Remote State** to allow seamless synchronization across multiple development environments (e.g., Work vs. Personal laptops).
+
+* **Backend:** Google Cloud Storage (`gs://three-dogs-tf-state`).
+* **State Locking:** Terraform automatically locks the state in GCS during an `apply` to prevent concurrent configuration changes from different machines.
+
+---
+
 ## ⚡ CDN & Caching Logic (Fastly Edge)
 Our edge configuration is defined in `infra/main.tf` to ensure high performance and origin shielding through custom VCL.
 
@@ -48,119 +57,65 @@ Our edge configuration is defined in `infra/main.tf` to ensure high performance 
 ## 🛠️ Local Development
 Follow these steps to replicate the "3 Dogs & a Frog" local build and test environment on a new macOS machine.
 
-### 1. Install Prerequisites
-This project relies on Homebrew, Node.js, `direnv` for secret management, and Docker.
+1.  **Clone the Repository:**
+    ```bash
+    git clone [https://github.com/dctheobald/three-dogs-and-a-frog.git](https://github.com/dctheobald/three-dogs-and-a-frog.git)
+    ```
 
-**Install Homebrew** (if not already installed):
-```bash
-/bin/bash -c "$(curl -fsSL [https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh](https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh))"
-```
+2.  **Install Prerequisites:**
+    * **Docker Desktop:** To run and test containers locally.
+    * **Node.js:** For local dependency management (`npm install`).
+    * **direnv:** To automatically load environment variables and infrastructure secrets.
+    * **Google Cloud SDK:** To authenticate with GCP.
 
-**Install Core Dependencies:**
-```bash
-brew install node direnv gh
-```
+3.  **Sync Secrets:**
+    * Manually copy the `.envrc` (root), `.env` (root), and `infra/.envrc` files from an authorized machine. These files are ignored by Git.
+    * Run `direnv allow` in both the project root and the `infra/` directory.
 
-**Configure `direnv` for Zsh:**
-Hook `direnv` into your shell so it automatically loads environment variables when entering the directory:
-```bash
-echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
-source ~/.zshrc
-```
+4.  **Initialize Infrastructure:**
+    ```bash
+    cd infra
+    gcloud auth application-default login
+    terraform init
+    ```
+    *This will connect your local environment to the shared GCS state bucket.*
 
-**Install Docker Desktop:**
-Download and install [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/). Ensure the application is open and running in the background.
+### 🏃‍♂️ Running the Application Locally
+Because this application uses Server-Side Rendering (EJS) for modular components, it must be served via Node.js (you cannot simply open the files in a browser).
 
-### 2. Authenticate and Pull the Codebase
-Log in to the GitHub CLI to authorize the machine, configure your Git identity, and clone the repository.
-
-```bash
-# Authenticate (Select HTTPS and Login via Browser)
-gh auth login
-
-# Set your Git identity
-git config --global user.name "Your Name"
-git config --global user.email "your.email@example.com"
-
-# Clone the repository
-git clone [https://github.com/dctheobald/three-dogs-and-a-frog.git](https://github.com/dctheobald/three-dogs-and-a-frog.git)
-cd three-dogs-and-a-frog
-```
-
-### 3. Recreate Local Secrets
-To keep production secrets secure, `.env` files are ignored by Git. You must manually recreate them.
-
-**1. Create the `.env` file:**
-Create a `.env` file in the root of the project (`three-dogs-and-a-frog/`) and add your local testing keys (do *not* use the `export` keyword here):
-```env
-FASTLY_API_KEY="your_fastly_key_here"
-STRIPE_SECRET_KEY="sk_test_..."
-PORT=3000
-NODE_ENV="development"
-```
-
-**2. Configure `.envrc` for direnv:**
-Create or update the `.envrc` file in the root directory to simply read the `.env` file:
-```bash
-echo 'dotenv' > .envrc
-```
-
-**3. Authorize the directory:**
-Tell `direnv` to securely load the variables:
-```bash
-direnv allow
-```
-
-### 4. Spin Up the Environment
-You have two options for running the storefront locally.
-
-**Option A: The Docker Way (Full Stack Replication)**
-Use standard Docker commands to build and run the container locally, injecting the secrets from your new `.env` file.
-```bash
-# 1. Build the image
-docker build -t three-dogs-app .
-
-# 2. Run the container
-docker run -p 3000:3000 --env-file .env three-dogs-app
-```
-
-**Option B: The Node Way (Rapid UI Testing)**
-If you are rapidly testing CSS or HTML changes natively and want to bypass Docker, run the Express server directly:
-```bash
-npm install
-npm start
-```
-
-Once running, navigate to **http://localhost:3000** in your browser to access the storefront.
+1. Ensure your `.env` file is populated with your Stripe keys.
+2. Run the application:
+   ```bash
+   npm install
+   npm start
+   ```
+3. Open your browser to `http://localhost:3000`
 
 ---
 
 ## 🚀 How to Deploy Changes
+We use a decoupled deployment strategy to ensure application updates don't accidentally overwrite infrastructure configurations.
 
-### 1. Content & Application Changes (HTML, CSS, JS)
-* **Action:** `git add .` -> `git commit -m "update"` -> `git push origin main`
-* **Effect:** Triggers the automated CI/CD pipeline (Build, Deploy, Purge).
-* **Verification:** Check GitHub Actions tab for success. Changes are instant.
+### 1. Application Updates (Node.js, HTML, CSS)
+Application updates are fully automated via CI/CD.
+* **Process:** Simply commit your code and `git push origin main`.
+* **Automation:** GitHub Actions will automatically trigger, build the new Docker container, and deploy it to the GCP VM. It will gracefully restart the application without touching the Terraform state.
 
-### 2. Infrastructure & Networking Changes (VM, Firewall, CDN)
-All cloud resources are managed via Terraform in the `infra` directory.
-* **Action:**
-    ```zsh
-    cd infra
-    terraform plan    # Preview what will change
-    terraform apply   # Execute changes (type 'yes')
-    ```
-* **Post-Apply Requirements:**
-    * **VM Reboots:** Modifying the VM's `startup-script` via Terraform does not automatically reboot the VM. You must manually power-cycle the instance to read new instructions:
-      `gcloud compute instances reset three-dog-one-frog-prod --zone=us-central1-c --project=three-dogs-frog-store`
-    * **Fastly Domain Errors:** If Fastly throws a `500 Unknown Domain` error after an update due to versionless domain handoffs, force Terraform to recreate the links:
-      `terraform apply -replace="fastly_domain_service_link.apex_link" -replace="fastly_domain_service_link.www_link"`
+### 2. Infrastructure Updates (Terraform, Fastly VCL, Edge Security)
+Infrastructure changes are deployed manually from your local machine using our Remote State architecture.
+* **Process:** 1. Open your terminal and navigate to the `infra/` directory.
+  2. Ensure your environment variables are loaded: `direnv allow`
+  3. Ensure you are authenticated with GCP: `gcloud auth application-default login`
+  4. Preview the changes: `terraform plan`
+  5. Deploy the changes: `terraform apply`
+* *Note: Because this project uses GCS Remote State and state-locking, you can safely run these deployment commands from any authorized machine without risking state corruption.*
 
 ---
 
 ## 📁 Project Structure
 * `infra/`: Terraform HCL files (Providers, Variables, and Resources).
-* `public/`: Static assets (images, CSS).
+* `views/`: EJS template files, including reusable components (header/footer).
+* `public/`: Static assets (images, CSS, client-side JS).
 * `server.js`: Express.js server logic and pure backend entry point.
 * `.github/workflows/`: YAML definitions for CI/CD and Fastly Purging.
 * `Dockerfile`: Container instructions for the highly-secured Node.js environment.
@@ -168,7 +123,7 @@ All cloud resources are managed via Terraform in the `infra` directory.
 ---
 
 ## ⚠️ Security Requirements
-* **Local Secrets:** `infra/terraform.tfvars` (Contains GCP Project ID and Fastly API Key). This file is ignored by Git.
+* **Infrastructure Secrets:** `infra/.envrc` (managed via `direnv`). Contains the GCP Project ID, Fastly API Key, and Terraform variables. This file is ignored by Git to prevent credential leaks.
 * **GCP Secrets:** `STRIPE_SECRET_KEY` is stored in GCP Secret Manager and injected at runtime via the VM's startup script.
 * **CI Secrets:** `FASTLY_API_KEY` and `FASTLY_SERVICE_ID` must be configured in GitHub Repository Secrets.
 * **Terraform Metadata:** The `app_image` tag on the GCP VM is dynamically injected by GitHub Actions. Terraform explicitly ignores this tag using a `lifecycle` block to prevent overwriting the active container image.
