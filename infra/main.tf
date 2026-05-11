@@ -115,10 +115,11 @@ EOF
   snippet {
     name     = "force-https-and-www"
     type     = "recv"
-    priority = 100
+    priority = 10
     content  = <<EOF
   if (!req.http.Fastly-SSL || req.http.host == "${var.domain_name}") {
-    error 801 "Redirect to Secure WWW";
+    set req.http.X-Forwarded-Host = "www.${var.domain_name}";
+    error 802 "Redirect to Secure WWW";
   }
 EOF
   }
@@ -128,9 +129,10 @@ EOF
     type     = "error"
     priority = 100
     content  = <<EOF
-  if (obj.status == 801) {
+  if (obj.status == 802) {
     set obj.status = 301;
-    set obj.http.Location = "https://www.${var.domain_name}" req.url;
+    # Use the forwarded host we just set, ensuring HTTPS
+    set obj.http.Location = "https://" + req.http.X-Forwarded-Host + req.url;
     return(deliver);
   }
 EOF
