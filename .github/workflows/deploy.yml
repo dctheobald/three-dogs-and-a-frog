@@ -9,6 +9,7 @@ on:
       - 'LICENSE'        # Ignores the license file
       - '.gitignore'     # Ignores git configuration
       - '.github/**'     # Ignores changes to the pipeline script itself
+      - 'infra/**'       # Ignores infra changes
 
 jobs:
   build-and-deploy:
