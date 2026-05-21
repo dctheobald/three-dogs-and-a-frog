@@ -6,13 +6,6 @@ terraform {
   }
 }
 
-# Variable for the Docker Image
-variable "app_image" {
-  description = "The full Docker image path for the retail app"
-  type        = string
-  default     = "us-central1-docker.pkg.dev/three-dogs-frog-store/retail-repo/retail-app:latest"
-}
-
 # 1. THE GCP VM (Origin Server)
 resource "google_compute_instance" "retail_origin" {
   name         = "three-dog-one-frog-prod"
@@ -183,6 +176,12 @@ EOT
         return (deliver);
       }
 EOT
+  }
+  
+  lifecycle {
+    ignore_changes = [
+      rate_limiter,
+    ]
   }
 
   force_destroy = true

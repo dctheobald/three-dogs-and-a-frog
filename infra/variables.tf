@@ -21,6 +21,7 @@ variable "machine_type" {
 variable "app_image" {
   type        = string
   description = "The full Docker image path"
+  default     = "us-central1-docker.pkg.dev/three-dogs-frog-store/retail-repo/retail-app:latest"
 }
 
 variable "domain_name" {
