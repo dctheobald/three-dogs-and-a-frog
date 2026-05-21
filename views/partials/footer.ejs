@@ -14,23 +14,25 @@
             </div>
             <div class="footer-col"><h4>Stay Connected</h4><button style="background: transparent; color: white; border: 1px solid white; padding: 0.8rem 1.5rem; cursor: pointer; text-transform: uppercase; font-weight: bold; width: 100%; font-size: 0.9rem;">Sign Up</button></div>
         </div>
-	<div class="footer-bottom"><p>&copy; 2026 3 Dogs and a Frog. | This is a demo storefront. No real products are sold.</p></div>
+    <div class="footer-bottom"><p>&copy; 2026 3 Dogs and a Frog. | This is a demo storefront. No real products are sold.</p></div>
     </footer>
+    
     <button id="frogChatBtn" class="frog-chat-btn" aria-label="Chat with the Guide">🐸</button>
 
-    <div id="frogChatWindow" class="frog-chat-window">
+    <div id="frog-chat-window" class="frog-chat-window">
         <div class="chat-header">
             <span>The Wise Frog</span>
-            <button id="closeChatBtn">&times;</button>
+            <!-- <button id="closeChatBtn" class="frog-chat-btn">&times;</button> -->
         </div>
-        <div class="chat-messages" id="chatMessages">
+        <div class="chat-messages" id="frog-chat-messages">
             <div class="message frog-msg">Ribbit. Welcome to basecamp. How can I guide your pack today?</div>
         </div>
-        <div class="chat-input-area">
-            <input type="text" id="chatInput" placeholder="Ask the guide..." autocomplete="off">
-            <button id="sendChatBtn">Send</button>
-        </div>
+        <form id="frog-chat-form" class="chat-input-area" style="display: flex; gap: 8px;">
+            <input type="text" id="frog-chat-input" placeholder="Ask the guide..." autocomplete="off" style="width: 100%;">
+            <button type="submit" id="sendChatBtn">Send</button>
+        </form>
     </div>
-    <script src="/storefront.js"></script>
+    
+    <script src="/storefront.js?v=16"></script>
 </body>
 </html>

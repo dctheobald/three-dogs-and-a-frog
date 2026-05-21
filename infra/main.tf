@@ -53,15 +53,15 @@ resource "google_compute_instance" "retail_origin" {
         caddy:alpine caddy reverse-proxy --from https://www.${var.domain_name} --to http://retail-app:3000 --internal-certs
     EOT
   }
- 
-   lifecycle {
-     ignore_changes = [
-       metadata["app_image"],
-     ]
-   }
+
+  lifecycle {
+    ignore_changes = [
+      metadata["app_image"],
+    ]
+  }
 }
 
-# 2. THE FASTLY SERVICE (Edge Compute & Security)
+# 2. THE FASTLY SERVICE
 resource "fastly_service_vcl" "retail_fastly" {
   name = "three-dogs-frog-store-production"
 
@@ -74,53 +74,51 @@ resource "fastly_service_vcl" "retail_fastly" {
     ssl_sni_hostname = "www.${var.domain_name}"
   }
 
-  # --- NEW: Secure Dictionary for Demo Auth ---
   dictionary {
-    name       = "demo_auth_secrets_v2"
+    name = "demo_auth_secrets_v2"
   }
 
-  # --- NEW: Intercept /scenarios logic ---
+  # --- AUTHENTICATION LOGIC ---
+  # Protects ONLY the HTML Scenarios
   snippet {
     name     = "require-demo-auth"
     type     = "recv"
     priority = 90
     content  = <<EOF
-  if (req.url ~ "^/scenarios") {
-    declare local var.expected_auth STRING;
-    set var.expected_auth = "Basic " + table.lookup(demo_auth_secrets_v2, "demo_credentials");
-
-    if (!req.http.Authorization || req.http.Authorization != var.expected_auth) {
-      error 401 "Restricted Demo";
-    }
-  }
+      if (req.url ~ "^/scenarios") {
+        declare local var.expected_auth STRING;
+        set var.expected_auth = "Basic " + table.lookup(demo_auth_secrets_v2, "demo_credentials");
+        if (!req.http.Authorization || req.http.Authorization != var.expected_auth) {
+          error 401 "Restricted Demo";
+        }
+      }
 EOF
   }
 
-  # --- NEW: Generate basic auth prompt ---
   snippet {
     name     = "demo-auth-challenge"
     type     = "error"
     priority = 90
     content  = <<EOF
-  if (obj.status == 401 && obj.response == "Restricted Demo") {
-    set obj.http.WWW-Authenticate = "Basic realm=""Enterprise Demos""";
-    set obj.http.Content-Type = "text/plain";
-    synthetic {"Authentication required to access Enterprise Demos."};
-    return (deliver);
-  }
+      if (obj.status == 401 && obj.response == "Restricted Demo") {
+        set obj.http.WWW-Authenticate = {"Basic realm="Enterprise Demos""};
+        set obj.http.Content-Type = "text/plain";
+        synthetic {"Authentication required to access Enterprise Demos."};
+        return (deliver);
+      }
 EOF
   }
 
-  # Standard HTTPS redirection
+  # --- HTTPS AND WWW REDIRECTS ---
   snippet {
     name     = "force-https-and-www"
     type     = "recv"
     priority = 10
     content  = <<EOF
-  if (!req.http.Fastly-SSL || req.http.host == "${var.domain_name}") {
-    set req.http.X-Forwarded-Host = "www.${var.domain_name}";
-    error 802 "Redirect to Secure WWW";
-  }
+      if (!req.http.Fastly-SSL || req.http.host == "${var.domain_name}") {
+        set req.http.X-Forwarded-Host = "www.${var.domain_name}";
+        error 802 "Redirect to Secure WWW";
+      }
 EOF
   }
 
@@ -129,52 +127,73 @@ EOF
     type     = "error"
     priority = 100
     content  = <<EOF
-  if (obj.status == 802) {
-    set obj.status = 301;
-    # Use the forwarded host we just set, ensuring HTTPS
-    set obj.http.Location = "https://" + req.http.X-Forwarded-Host + req.url;
-    return(deliver);
-  }
+      if (obj.status == 802) {
+        set obj.status = 301;
+        set obj.http.Location = "https://" + req.http.X-Forwarded-Host + req.url;
+        return(deliver);
+      }
 EOF
   }
 
+  # --- CACHING LOGIC ---
   snippet {
     name     = "force-cache-static-assets"
     type     = "fetch"
     priority = 100
     content  = <<EOF
-  if (req.url.ext ~ "^(jpg|jpeg|gif|png|webp|svg|css|js|JPG|JPEG|PNG)$") {
-    unset beresp.http.Set-Cookie;
-    unset beresp.http.Vary;
-    set beresp.ttl = 86400s;
-    set beresp.http.Cache-Control = "public, max-age=86400";
-    return(deliver);
-  }
+      if (req.url.ext ~ "^(jpg|jpeg|gif|png|webp|svg|css|js|JPG|JPEG|PNG)$") {
+        unset beresp.http.Set-Cookie;
+        unset beresp.http.Vary;
+        set beresp.ttl = 86400s;
+        set beresp.http.Cache-Control = "public, max-age=86400";
+        return(deliver);
+      }
 EOF
+  }
+
+  # --- WAF SECURITY LOGIC ---
+  snippet {
+    name     = "The Threat Detection"
+    type     = "recv"
+    priority = 50
+    content  = <<EOT
+      if (req.url ~ "(?i)(%27)|(\')|(--)|(%23)|(#)") {
+        error 403 "Forbidden";
+      }
+EOT
+  }
+
+  snippet {
+    name     = "The Custom Block Page"
+    type     = "error"
+    priority = 50
+    content  = <<EOT
+      if (obj.status == 403 && obj.response == "Forbidden") {
+        set obj.http.Content-Type = "text/html; charset=utf-8";
+        synthetic {"<!DOCTYPE html><html><head><title>WAF Block</title></head><body style='background-color:#ffebee; text-align:center; padding:50px; font-family:sans-serif;'><h1>🚨 THREAT NEUTRALIZED AT THE EDGE 🚨</h1><p>The Fastly Web Application Firewall has blocked this request due to malicious SQL injection patterns.</p></body></html>"};
+        return (deliver);
+      }
+EOT
   }
 
   force_destroy = true
 }
 
-# --- NEW: Populate the Fastly Edge Dictionary ---
+# 3. DICTIONARY ITEMS AND DOMAINS
 resource "fastly_service_dictionary_items" "demo_secrets_items" {
   for_each = {
     for d in fastly_service_vcl.retail_fastly.dictionary : d.name => d if d.name == "demo_auth_secrets_v2"
   }
-
   service_id    = fastly_service_vcl.retail_fastly.id
   dictionary_id = each.value.dictionary_id
   manage_items  = true
-
   items = {
-    "demo_credentials" = var.demo_auth_base64_secret 
+    "demo_credentials" = var.demo_auth_base64_secret
   }
 }
 
-# 3. DOMAINS AND ROUTING
 resource "fastly_domain" "apex" {
   fqdn = var.domain_name
-
   lifecycle {
     ignore_changes = [service_id]
   }
@@ -182,7 +201,6 @@ resource "fastly_domain" "apex" {
 
 resource "fastly_domain" "www" {
   fqdn = "www.${var.domain_name}"
-
   lifecycle {
     ignore_changes = [service_id]
   }
@@ -196,4 +214,35 @@ resource "fastly_domain_service_link" "apex_link" {
 resource "fastly_domain_service_link" "www_link" {
   domain_id  = fastly_domain.www.id
   service_id = fastly_service_vcl.retail_fastly.id
+}
+
+# 4. LAYER 2: GCP BILLING BUDGET
+data "google_billing_account" "account" {
+  billing_account = var.billing_account_id
+}
+
+resource "google_billing_budget" "agent_budget" {
+  billing_account = data.google_billing_account.account.id
+  display_name    = "3 Dogs AI Agent Safeguard"
+
+  budget_filter {
+    projects = ["projects/${var.project_id}"]
+  }
+
+  amount {
+    specified_amount {
+      currency_code = "USD"
+      units         = "10"
+    }
+  }
+
+  threshold_rules {
+    threshold_percent = 0.5
+  }
+  threshold_rules {
+    threshold_percent = 0.9
+  }
+  threshold_rules {
+    threshold_percent = 1.0
+  }
 }

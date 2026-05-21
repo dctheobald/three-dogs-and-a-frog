@@ -5,15 +5,17 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**.md'          # Ignores README.md and any other markdown files
-      - 'LICENSE'        # Ignores the license file
-      - '.gitignore'     # Ignores git configuration
-      - '.github/**'     # Ignores changes to the pipeline script itself
-      - 'infra/**'       # Ignores infra changes
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/**' # Keeps pipeline triggers safe
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
 
     steps:
       - name: Checkout Code
@@ -27,7 +29,29 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for Artifact Registry
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Apply
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+          TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_demo_auth_base64_secret: ${{ secrets.TF_VAR_DEMO_AUTH_BASE64_SECRET }}
+        run: |
+          cd infra
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Setup Fastly Edge Rate Limiter
+        env:
+          FASTLY_API_KEY: ${{ secrets.FASTLY_API_KEY }}
+          FASTLY_SERVICE_ID: ${{ secrets.FASTLY_SERVICE_ID }}
+        run: |
+          chmod +x infra/setup-fastly.sh
+          ./infra/setup-fastly.sh
+
+      - name: Configure Docker
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Build and Push Docker Image
@@ -39,19 +63,14 @@ jobs:
       - name: Update VM Metadata and Restart
         run: |
           IMAGE_TAG=us-central1-docker.pkg.dev/three-dogs-frog-store/retail-repo/retail-app-image:${{ github.sha }}
-          
-          # 1. Update the 'app_image' metadata so the startup script knows which tag to pull
           gcloud compute instances add-metadata three-dog-one-frog-prod \
             --zone=us-central1-c \
             --metadata=app_image=$IMAGE_TAG
-
-          # 2. Reset the instance to trigger the new startup script execution
           gcloud compute instances reset three-dog-one-frog-prod \
             --zone=us-central1-c
 
       - name: Purge Fastly Cache
         run: |
-          # We use a 5-second sleep to give the VM a head start on booting before purging
           sleep 5
           curl -X POST -H "Fastly-Key: ${{ secrets.FASTLY_API_KEY }}" \
             https://api.fastly.com/service/${{ secrets.FASTLY_SERVICE_ID }}/purge_all

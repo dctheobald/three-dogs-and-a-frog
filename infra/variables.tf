@@ -34,7 +34,13 @@ variable "node_env" {
   description = "Switch between 'production' and 'development'"
 }
 
-# --- NEW: Fastly Edge Authentication Secret ---
+variable "billing_account_id" {
+  description = "The GCP Billing Account ID for budget alerts"
+  type        = string
+  sensitive   = true
+}
+
+# --- Fastly Edge Authentication Secret ---
 variable "demo_auth_base64_secret" {
   description = "Base64 encoded string of username:password for Enterprise Demos"
   type        = string
