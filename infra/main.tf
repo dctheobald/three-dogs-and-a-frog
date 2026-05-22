@@ -75,11 +75,11 @@ resource "fastly_service_vcl" "retail_fastly" {
     name = "demo_auth_secrets_v2"
   }
 
-  # --- EDGE RATE LIMITING ---
+# --- RENAME EVERYTHING TO FORCE NEW API CREATION ---
   rate_limiter {
-    name                 = "three-dogs-rate-limiter"
+    name                 = "three-dogs-rate-limiter-v2"
     action               = "response"
-    response_object_name = "rate-limited-response"
+    response_object_name = "rate-limited-json-v2"
     penalty_box_duration = 60
     rps_limit            = 100
     window_size          = 1
@@ -87,17 +87,12 @@ resource "fastly_service_vcl" "retail_fastly" {
     client_key           = "req.http.Fastly-Client-IP"
   }
 
-# --- JSON RESPONSE OBJECT (Minimalist Syntax) ---
   response_object {
-    name         = "rate-limited-response"
+    name         = "rate-limited-json-v2"
     status       = 429
     response     = "TooManyRequests"
     content_type = "application/json"
-    content      = <<EOF
-{
-   "error":"Ribbit... The Wise Frog is taking a break!"
-}     
-EOF
+    content      = "{\"error\":\"Ribbit...TheWiseFrogIsTakingABreak\"}"
   }
 
   snippet {
