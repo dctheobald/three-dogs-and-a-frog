@@ -49,6 +49,7 @@ resource "google_compute_instance" "retail_origin" {
 
       docker run -d --name retail-app --network frog-net --restart always \
       -e STRIPE_SECRET_KEY="${data.google_secret_manager_secret_version.stripe_key.secret_data}" \
+      -e GEMINI_API_KEY="${data.google_secret_manager_secret_version.gemini_key.secret_data}" \
       -e PORT="3000" \
       -e NODE_ENV="${var.node_env}" \
       $APP_IMAGE

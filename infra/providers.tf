@@ -25,6 +25,11 @@ data "google_secret_manager_secret_version" "stripe_key" {
   version = "latest"
 }
 
+data "google_secret_manager_secret_version" "gemini_key" {
+  secret  = "gemini-api-key"
+  version = "latest"
+}
+
 provider "fastly" {
   # No api_key line here. It will pull from your shell's FASTLY_API_KEY
 }
