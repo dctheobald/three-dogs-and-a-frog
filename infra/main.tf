@@ -85,16 +85,24 @@ resource "fastly_service_vcl" "retail_fastly" {
     name = "demo_auth_secrets_v2"
   }
 
-  # --- EDGE RATE LIMITING (No spaces in http_methods!) ---
+  # --- EDGE RATE LIMITING ---
   rate_limiter {
     name                 = "three-dogs-rate-limiter"
     action               = "response"
     response_object_name = "rate-limited-response"
-    penalty_box_duration = 3600
+    penalty_box_duration = 60
     rps_limit            = 100
     window_size          = 1
     http_methods         = "GET,POST"
     client_key           = "req.http.Fastly-Client-IP"
+  }
+
+  # --- JSON RESPONSE OBJECT FOR RATE LIMITING ---
+  response_object {
+    name         = "rate-limited-response"
+    status       = 429
+    content      = "{\"error\": \"Ribbit... The Wise Frog is taking a break!\"}"
+    content_type = "application/json"
   }
 
   # --- AUTHENTICATION LOGIC ---
