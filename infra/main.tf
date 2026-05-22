@@ -75,24 +75,23 @@ resource "fastly_service_vcl" "retail_fastly" {
     name = "demo_auth_secrets_v2"
   }
 
-# --- RENAME EVERYTHING TO FORCE NEW API CREATION ---
   rate_limiter {
-    name                 = "three-dogs-rate-limiter-v2"
+    name                 = "three-dogs-rate-limiter"
     action               = "response"
-    response_object_name = "rate-limited-json-v2"
     penalty_box_duration = 60
     rps_limit            = 100
     window_size          = 1
     http_methods         = "GET,POST"
     client_key           = "req.http.Fastly-Client-IP"
-  }
 
-  response_object {
-    name         = "rate-limited-json-v2"
-    status       = 429
-    response     = "TooManyRequests"
-    content_type = "application/json"
-    content      = "{\"error\":\"Ribbit...TheWiseFrogIsTakingABreak\"}"
+    # Define the response inline to avoid creation order dependencies
+    response {
+      status       = 429
+      content_type = "application/json"
+      content      = jsonencode({
+        error = "Ribbit... The Wise Frog is taking a break!"
+      })
+    }
   }
 
   snippet {
