@@ -38,8 +38,9 @@ jobs:
           TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
           TF_VAR_demo_auth_base64_secret: ${{ secrets.TF_VAR_DEMO_AUTH_BASE64_SECRET }}
-          # This will now override the default 'latest' tag during a build
           TF_VAR_app_image: "us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/retail-repo/retail-app:${{ github.sha }}"
+          FASTLY_API_KEY: ${{ secrets.FASTLY_API_KEY }}
+          FASTLY_SERVICE_ID: ${{ secrets.FASTLY_SERVICE_ID }}
         run: |
           cd infra
           terraform init
