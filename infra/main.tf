@@ -47,7 +47,6 @@ resource "google_compute_instance" "retail_origin" {
       APP_IMAGE=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_image)
 
       # PRODUCTION RUN COMMAND
-      # Vertex AI Native Auth via GCP Service Account (No API Key needed)
       docker run -d --name retail-app --network frog-net --restart always \
       --env DOTENVX_IGNORE=true \
       -e STRIPE_SECRET_KEY="${data.google_secret_manager_secret_version.stripe_key.secret_data}" \
@@ -101,6 +100,7 @@ resource "fastly_service_vcl" "retail_fastly" {
   response_object {
     name         = "rate-limited-response"
     status       = 429
+    response     = "Too Many Requests"
     content      = "{\"error\": \"Ribbit... The Wise Frog is taking a break!\"}"
     content_type = "application/json"
   }
