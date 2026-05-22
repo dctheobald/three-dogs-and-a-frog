@@ -1,3 +1,4 @@
+# Build GCP and Fastly Infra
 # 0. Tell Terraform to grab state from Google Storage bucket
 terraform {
   backend "gcs" {
