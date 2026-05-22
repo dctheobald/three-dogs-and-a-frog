@@ -1,5 +1,4 @@
 # Build GCP and Fastly Infra
-# 0. Tell Terraform to grab state from Google Storage bucket
 terraform {
   backend "gcs" {
     bucket  = "three-dogs-tf-state"
@@ -37,16 +36,11 @@ resource "google_compute_instance" "retail_origin" {
       #!/bin/bash
       export DOCKER_CONFIG=/tmp/.docker
       mkdir -p $DOCKER_CONFIG
-
       docker-credential-gcr configure-docker --registries="us-central1-docker.pkg.dev"
       docker network create frog-net || true
-      
       docker rm -f retail-app || true
       docker rm -f caddy-ssl || true
-      
       APP_IMAGE=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_image)
-
-      # PRODUCTION RUN COMMAND
       docker run -d --name retail-app --network frog-net --restart always \
       --env DOTENVX_IGNORE=true \
       -e STRIPE_SECRET_KEY="${data.google_secret_manager_secret_version.stripe_key.secret_data}" \
@@ -54,16 +48,13 @@ resource "google_compute_instance" "retail_origin" {
       -e PORT="3000" \
       -e NODE_ENV="${var.node_env}" \
       $APP_IMAGE 
-          
       docker run -d --name caddy-ssl --network frog-net --restart always -p 443:443 \
         caddy:alpine caddy reverse-proxy --from https://www.${var.domain_name} --to http://retail-app:3000 --internal-certs
     EOT
   }
 
   lifecycle {
-    ignore_changes = [
-      metadata["app_image"],
-    ]
+    ignore_changes = [metadata["app_image"]]
   }
 }
 
@@ -96,7 +87,7 @@ resource "fastly_service_vcl" "retail_fastly" {
     client_key           = "req.http.Fastly-Client-IP"
   }
 
-  # --- JSON RESPONSE OBJECT FOR RATE LIMITING ---
+  # --- JSON RESPONSE OBJECT (Nested inside the service) ---
   response_object {
     name         = "rate-limited-response"
     status       = 429
@@ -105,7 +96,7 @@ resource "fastly_service_vcl" "retail_fastly" {
     content_type = "application/json"
   }
 
-  # --- AUTHENTICATION LOGIC ---
+  # ... (Keep your existing snippets below here)
   snippet {
     name     = "require-demo-auth"
     type     = "recv"
@@ -135,7 +126,6 @@ EOF
 EOF
   }
 
-  # --- HTTPS AND WWW REDIRECTS ---
   snippet {
     name     = "force-https-and-www"
     type     = "recv"
@@ -161,7 +151,6 @@ EOF
 EOF
   }
 
-  # --- CACHING LOGIC ---
   snippet {
     name     = "force-cache-static-assets"
     type     = "fetch"
@@ -177,7 +166,6 @@ EOF
 EOF
   }
 
-  # --- WAF SECURITY LOGIC ---
   snippet {
     name     = "The Threat Detection"
     type     = "recv"
@@ -220,16 +208,12 @@ resource "fastly_service_dictionary_items" "demo_secrets_items" {
 
 resource "fastly_domain" "apex" {
   fqdn = var.domain_name
-  lifecycle {
-    ignore_changes = [service_id]
-  }
+  lifecycle { ignore_changes = [service_id] }
 }
 
 resource "fastly_domain" "www" {
   fqdn = "www.${var.domain_name}"
-  lifecycle {
-    ignore_changes = [service_id]
-  }
+  lifecycle { ignore_changes = [service_id] }
 }
 
 resource "fastly_domain_service_link" "apex_link" {
@@ -250,22 +234,13 @@ data "google_billing_account" "account" {
 resource "google_billing_budget" "agent_budget" {
   billing_account = data.google_billing_account.account.id
   display_name    = "3 Dogs AI Agent Safeguard"
-
-  budget_filter {
-    projects = ["projects/${var.project_id}"]
-  }
-
+  budget_filter { projects = ["projects/${var.project_id}"] }
   amount {
     specified_amount {
       currency_code = "USD"
       units         = "10"
     }
   }
-
-  threshold_rules {
-    threshold_percent = 0.5
-  }
-  threshold_rules {
-    threshold_percent = 0.9
-  }
+  threshold_rules { threshold_percent = 0.5 }
+  threshold_rules { threshold_percent = 0.9 }
 }
