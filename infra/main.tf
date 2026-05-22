@@ -91,7 +91,7 @@ resource "fastly_service_vcl" "retail_fastly" {
   response_object {
     name         = "rate-limited-response"
     status       = 429
-#    response     = "Too Many Requests"
+    response     = "TooManyRequests"
     content_type = "application/json"
     content      = <<EOF
 {
