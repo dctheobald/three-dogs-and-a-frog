@@ -87,12 +87,17 @@ resource "fastly_service_vcl" "retail_fastly" {
     client_key           = "req.http.Fastly-Client-IP"
   }
 
+# --- JSON RESPONSE OBJECT (Minimalist Syntax) ---
   response_object {
     name         = "rate-limited-response"
     status       = 429
     response     = "Too Many Requests"
-    content      = jsonencode({ "error" = "Ribbit... The Wise Frog is taking a break!" })
     content_type = "application/json"
+    content      = <<EOF
+{
+   "error":"Ribbit... The Wise Frog is taking a break!"
+}     
+EOF
   }
 
   snippet {
