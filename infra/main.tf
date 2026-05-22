@@ -48,11 +48,13 @@ resource "google_compute_instance" "retail_origin" {
       APP_IMAGE=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_image)
 
       docker run -d --name retail-app --network frog-net --restart always \
+      --env DOTENVX_IGNORE=true \
       -e STRIPE_SECRET_KEY="${data.google_secret_manager_secret_version.stripe_key.secret_data}" \
       -e GEMINI_API_KEY="${data.google_secret_manager_secret_version.gemini_key.secret_data}" \
+      -e GCP_PROJECT_ID="${var.project_id}" \
       -e PORT="3000" \
       -e NODE_ENV="${var.node_env}" \
-      $APP_IMAGE
+      $APP_IMAGE      
         
       docker run -d --name caddy-ssl --network frog-net --restart always -p 443:443 \
         caddy:alpine caddy reverse-proxy --from https://www.${var.domain_name} --to http://retail-app:3000 --internal-certs

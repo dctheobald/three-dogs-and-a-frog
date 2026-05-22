@@ -15,31 +15,32 @@ app.use(express.json());
 // ==========================================
 // --- GLOBAL AI INITIALIZATION ---
 // ==========================================
-// CONFIGURATION LOGIC:
-// 1. PRODUCTION PATH: In GCP, we inject 'GEMINI_API_KEY' via Docker 
-//    (from Secret Manager). This variable will be present, so we use it.
-// 2. LOCAL DEV PATH: If that variable is missing (because we didn't 
-//    inject it locally), we fall back to standard Vertex AI/GCP auth.
+
+// 1. PRODUCTION PATH: If we have an API Key (injected), use it.
+// 2. CLOUD NATIVE PATH: If no key, we rely on the VM's internal service account (Vertex AI).
+//    This requires the GCP_PROJECT_ID we just injected via Terraform.
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
+const gcpProjectId = process.env.GCP_PROJECT_ID;
+
 let ai;
 
 if (geminiApiKey) {
-    // THIS IS THE PRODUCTION PATH:
-    // We are running in the cloud (or explicitly configured with a key).
-    // We use the explicit API key injected by our infrastructure.
-    console.log("🚀 Initializing Gemini with injected API Key (Production/Manual)");
+    // DEVELOPMENT/MANUAL PATH
+    console.log("🚀 Initializing Gemini with API Key");
     ai = new GoogleGenAI({ apiKey: geminiApiKey });
-} else {
-    // THIS IS THE LOCAL/FALLBACK PATH:
-    // We are likely on your local Mac. It relies on 'Application Default 
-    // Credentials' (your gcloud login) or specific Vertex AI environment settings.
-    console.log("☁️ Initializing Gemini with Vertex AI (Local Fallback)");
+} else if (gcpProjectId) {
+    // PRODUCTION PATH (The fix you needed!)
+    console.log(`☁️ Initializing Gemini with Vertex AI (Project: ${gcpProjectId})`);
     ai = new GoogleGenAI({
         vertexai: true,
-        project: process.env.GCP_PROJECT_ID,
+        project: gcpProjectId,
         location: 'us-central1'
     });
+} else {
+    // FALLBACK
+    console.warn("⚠️ Warning: No API Key or Project ID found! AI may fail.");
+    ai = new GoogleGenAI({ vertexai: true, location: 'us-central1' });
 }
 
 // ==========================================
