@@ -31,7 +31,6 @@ resource "google_compute_instance" "retail_origin" {
   }
 
   metadata = {
-    # This ensures Terraform passes the image path to the VM
     app_image = var.app_image
     
     startup-script = <<-EOT
@@ -47,14 +46,16 @@ resource "google_compute_instance" "retail_origin" {
       
       APP_IMAGE=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_image)
 
+      # PRODUCTION RUN COMMAND
+      # Vertex AI Native Auth via GCP Service Account (No API Key needed)
       docker run -d --name retail-app --network frog-net --restart always \
       --env DOTENVX_IGNORE=true \
       -e STRIPE_SECRET_KEY="${data.google_secret_manager_secret_version.stripe_key.secret_data}" \
       -e GCP_PROJECT_ID="${var.project_id}" \
       -e PORT="3000" \
       -e NODE_ENV="${var.node_env}" \
-      $APP_IMAGE      
-        
+      $APP_IMAGE 
+          
       docker run -d --name caddy-ssl --network frog-net --restart always -p 443:443 \
         caddy:alpine caddy reverse-proxy --from https://www.${var.domain_name} --to http://retail-app:3000 --internal-certs
     EOT
@@ -82,6 +83,18 @@ resource "fastly_service_vcl" "retail_fastly" {
 
   dictionary {
     name = "demo_auth_secrets_v2"
+  }
+
+  # --- EDGE RATE LIMITING (No spaces in http_methods!) ---
+  rate_limiter {
+    name                 = "three-dogs-rate-limiter"
+    action               = "response"
+    response_object_name = "rate-limited-response"
+    penalty_box_duration = 3600
+    rps_limit            = 100
+    window_size          = 1
+    http_methods         = "GET,POST"
+    client_key           = "req.http.Fastly-Client-IP"
   }
 
   # --- AUTHENTICATION LOGIC ---
@@ -181,12 +194,6 @@ EOT
 EOT
   }
   
-  lifecycle {
-    ignore_changes = [
-      rate_limiter,
-    ]
-  }
-
   force_destroy = true
 }
 
@@ -252,8 +259,5 @@ resource "google_billing_budget" "agent_budget" {
   }
   threshold_rules {
     threshold_percent = 0.9
-  }
-  threshold_rules {
-    threshold_percent = 1.0
   }
 }

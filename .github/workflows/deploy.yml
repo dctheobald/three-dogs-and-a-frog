@@ -46,14 +46,14 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      - name: Setup Fastly Edge Rate Limiter
-        env:
-          FASTLY_API_KEY: ${{ secrets.FASTLY_API_KEY }}
-          FASTLY_SERVICE_ID: ${{ secrets.FASTLY_SERVICE_ID }}
-        run: |
-          chmod +x infra/setup-fastly.sh
-          ./infra/setup-fastly.sh
-
+#      - name: Setup Fastly Edge Rate Limiter
+#        env:
+#          FASTLY_API_KEY: ${{ secrets.FASTLY_API_KEY }}
+#          FASTLY_SERVICE_ID: ${{ secrets.FASTLY_SERVICE_ID }}
+#        run: |
+#          chmod +x infra/setup-fastly.sh
+#          ./infra/setup-fastly.sh
+#
       - name: Configure Docker
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
 
