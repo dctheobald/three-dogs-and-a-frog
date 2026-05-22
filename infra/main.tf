@@ -87,16 +87,14 @@ resource "fastly_service_vcl" "retail_fastly" {
     client_key           = "req.http.Fastly-Client-IP"
   }
 
-  # --- JSON RESPONSE OBJECT (Nested inside the service) ---
   response_object {
     name         = "rate-limited-response"
     status       = 429
     response     = "Too Many Requests"
-    content      = "{\"error\": \"Ribbit... The Wise Frog is taking a break!\"}"
+    content      = jsonencode({ "error" = "Ribbit... The Wise Frog is taking a break!" })
     content_type = "application/json"
   }
 
-  # ... (Keep your existing snippets below here)
   snippet {
     name     = "require-demo-auth"
     type     = "recv"
