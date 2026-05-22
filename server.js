@@ -15,12 +15,32 @@ app.use(express.json());
 // ==========================================
 // --- GLOBAL AI INITIALIZATION ---
 // ==========================================
-// Initializing with Vertex AI Enterprise mode
-const ai = new GoogleGenAI({
-    vertexai: true,
-    project: process.env.GCP_PROJECT_ID,
-    location: 'us-central1'
-});
+// CONFIGURATION LOGIC:
+// 1. PRODUCTION PATH: In GCP, we inject 'GEMINI_API_KEY' via Docker 
+//    (from Secret Manager). This variable will be present, so we use it.
+// 2. LOCAL DEV PATH: If that variable is missing (because we didn't 
+//    inject it locally), we fall back to standard Vertex AI/GCP auth.
+
+const geminiApiKey = process.env.GEMINI_API_KEY;
+let ai;
+
+if (geminiApiKey) {
+    // THIS IS THE PRODUCTION PATH:
+    // We are running in the cloud (or explicitly configured with a key).
+    // We use the explicit API key injected by our infrastructure.
+    console.log("🚀 Initializing Gemini with injected API Key (Production/Manual)");
+    ai = new GoogleGenAI({ apiKey: geminiApiKey });
+} else {
+    // THIS IS THE LOCAL/FALLBACK PATH:
+    // We are likely on your local Mac. It relies on 'Application Default 
+    // Credentials' (your gcloud login) or specific Vertex AI environment settings.
+    console.log("☁️ Initializing Gemini with Vertex AI (Local Fallback)");
+    ai = new GoogleGenAI({
+        vertexai: true,
+        project: process.env.GCP_PROJECT_ID,
+        location: 'us-central1'
+    });
+}
 
 // ==========================================
 // --- AI TOOLS & AGENT ENDPOINT ---
@@ -86,7 +106,7 @@ app.post('/api/agent', async (req, res) => {
                     Constraint 1: You must keep every response strictly under 3 sentences.
                     Constraint 2: Maintain a helpful, adventurous, and outdoorsy tone.
                     Constraint 3: If a user asks to buy an item or add it to their pack, you MUST use the 'add_to_cart' tool to do it for them.
-		    Constraint 4: You are strictly limited to discussing outdoor gear, camping, dogs, and the '3 Dogs and a Frog' store. If a user asks about politics, coding, history, or ANY unrelated topic, you must politely refuse to answer and steer the conversation back to outdoor gear.`,
+		            Constraint 4: You are strictly limited to discussing outdoor gear, camping, dogs, and the '3 Dogs and a Frog' store. If a user asks about politics, coding, history, or ANY unrelated topic, you must politely refuse to answer and steer the conversation back to outdoor gear.`,
                     tools: [{ functionDeclarations: [checkInventoryTool, addToCartTool] }] 
                 }
             });
@@ -160,11 +180,9 @@ app.post('/create-checkout-session', async (req, res) => {
 // ==========================================
 // --- DEMO ENDPOINTS ---
 // ==========================================
-// Dynamic route for all Demo Scenarios
 app.get('/scenarios/:demoName', (req, res) => {
     const demo = req.params.demoName;
     try {
-        // This tells Express to look for views/scenarios/[demoName].ejs
         res.render(`scenarios/${demo}`);
     } catch (error) {
         console.error("Demo Route Error:", error);
