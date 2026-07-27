@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "fastly-agent-toolkit@fastly-agent-toolkit": true
+  }
+}
