@@ -41,9 +41,3 @@ variable "billing_account_id" {
   sensitive   = true
 }
 
-# --- Fastly Edge Authentication Secret ---
-variable "demo_auth_base64_secret" {
-  description = "Base64 encoded string of username:password for Enterprise Demos"
-  type        = string
-  sensitive   = true
-}
