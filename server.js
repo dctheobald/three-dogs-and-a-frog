@@ -178,19 +178,6 @@ app.post('/create-checkout-session', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ==========================================
-// --- DEMO ENDPOINTS ---
-// ==========================================
-app.get('/scenarios/:demoName', (req, res) => {
-    const demo = req.params.demoName;
-    try {
-        res.render(`scenarios/${demo}`);
-    } catch (error) {
-        console.error("Demo Route Error:", error);
-        res.status(404).send("Demo scenario not found.");
-    }
-});
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🏕️ 3 Dogs and a Frog backend running on port ${PORT}`);
