@@ -213,7 +213,7 @@ data "google_billing_account" "account" {
 resource "google_billing_budget" "agent_budget" {
   billing_account = data.google_billing_account.account.id
   display_name    = "3 Dogs AI Agent Safeguard"
-  budget_filter { projects = ["projects/${var.project_id}"] }
+  budget_filter { projects = ["projects/${data.google_project.project.number}"] }
   amount {
     specified_amount {
       currency_code = "USD"
