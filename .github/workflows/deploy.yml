@@ -37,7 +37,6 @@ jobs:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
           TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_demo_auth_base64_secret: ${{ secrets.TF_VAR_DEMO_AUTH_BASE64_SECRET }}
           TF_VAR_app_image: "us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/retail-repo/retail-app-image"
           FASTLY_API_KEY: ${{ secrets.FASTLY_API_KEY }}
           FASTLY_SERVICE_ID: ${{ secrets.FASTLY_SERVICE_ID }}
