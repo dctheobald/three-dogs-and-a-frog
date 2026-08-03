@@ -12,19 +12,19 @@ Prepares the **3D&aF: AgentOps — Edge Traffic Classification** Looker Studio d
 **Automates** — the tedious part: a paced burst of requests with automation/bot user-agents that Fastly ContentGuard classifies as `bot`, populating the last hour so the time-series, donut, and "% Automated" callout have shape.
 
 **Cannot automate (remind the user, don't pretend otherwise):**
-- **The Looker window.** Set the report's date & time picker to the last 60 minutes so the live view matches the window the warm-up fills, and match the page subtitle ("Last 60 min.") if it's still hard-coded. The picker is a report control, set by hand at demo time.
+- **The Looker window.** Set the report's date & time picker to the last 60 minutes so the live view matches the window the warm-up fills. The picker is a report control, set by hand at demo time.
 - **The human lane.** Only a real browser produces `human` classifications — curl with a browser user-agent still classifies as `bot` (that's the whole point of the demo). The presenter must click around the live storefront on a laptop and a phone.
 
 ## Steps
 
-1. Run the warm-up:
+1. Run the warm-up. From the repo root (Claude Code's default working directory), invoke it by its full path so the reference resolves regardless of cwd; from inside the skill's own directory it is simply `scripts/warmup.sh`:
    ```bash
-   bash scripts/warmup.sh
+   bash .claude/skills/agentops-preflight/scripts/warmup.sh
    ```
-   ~175 requests paced over ~2 minutes, well under the site's 100 rps edge rate limiter.
+   ~105 requests (7 user-agents × 3 paths × 5 rounds) paced over ~1 minute, well under the site's 100 rps edge rate limiter. The script preflights the edge and aborts loudly if requests are not actually reaching Fastly — trust its exit status, not a "complete" line.
 
 2. Then tell the user, plainly:
-   - "Set the report's date & time picker to the last 60 minutes, and confirm the subtitle reads 'Last 60 min.'"
+   - "Set the report's date & time picker to the last 60 minutes"
    - "Browse the live storefront on your laptop and phone for a minute — that's the only way to move the Humans lane."
    - "Wait ~60 seconds for the Fastly log flush plus BigQuery streaming lag, then hit **Refresh data** in Looker Studio."
 
