@@ -71,10 +71,6 @@ resource "fastly_service_vcl" "retail_fastly" {
     ssl_sni_hostname = "www.${var.domain_name}"
   }
 
-  dictionary {
-    name = "demo_auth_secrets_v2"
-  }
-
   rate_limiter {
     name                 = "three-dogs-rate-limiter"
     action               = "response"
@@ -103,41 +99,13 @@ resource "fastly_service_vcl" "retail_fastly" {
   }
 
   snippet {
-    name     = "require-demo-auth"
-    type     = "recv"
-    priority = 90
-    content  = <<EOF
-      if (req.url ~ "^/scenarios") {
-        declare local var.expected_auth STRING;
-        set var.expected_auth = "Basic " + table.lookup(demo_auth_secrets_v2, "demo_credentials");
-        if (!req.http.Authorization || req.http.Authorization != var.expected_auth) {
-          error 401 "Restricted Demo";
-        }
-      }
-EOF
-  }
-
-  snippet {
-    name     = "demo-auth-challenge"
-    type     = "error"
-    priority = 90
-    content  = <<EOF
-      if (obj.status == 401 && obj.response == "Restricted Demo") {
-        set obj.http.WWW-Authenticate = {"Basic realm="Enterprise Demos""};
-        set obj.http.Content-Type = "text/plain";
-        synthetic {"Authentication required to access Enterprise Demos."};
-        return (deliver);
-      }
-EOF
-  }
-
-  snippet {
     name     = "force-https-and-www"
     type     = "recv"
     priority = 10
     content  = <<EOF
       if (!req.http.Fastly-SSL || req.http.host == "${var.domain_name}") {
         set req.http.X-Forwarded-Host = "www.${var.domain_name}";
+        set req.http.X-Frog-Class = "redirect";
         error 802 "Redirect to Secure WWW";
       }
 EOF
@@ -216,19 +184,7 @@ EOT
   force_destroy = true
 }
 
-# 3. DICTIONARY ITEMS AND DOMAINS
-resource "fastly_service_dictionary_items" "demo_secrets_items" {
-  for_each = {
-    for d in fastly_service_vcl.retail_fastly.dictionary : d.name => d if d.name == "demo_auth_secrets_v2"
-  }
-  service_id    = fastly_service_vcl.retail_fastly.id
-  dictionary_id = each.value.dictionary_id
-  manage_items  = true
-  items = {
-    "demo_credentials" = var.demo_auth_base64_secret
-  }
-}
-
+# 3. DOMAINS
 resource "fastly_domain" "apex" {
   fqdn = var.domain_name
   lifecycle { ignore_changes = [service_id] }
