@@ -12,7 +12,6 @@ RUN npm install --production
 
 # Copy application logic
 COPY server.js ./
-COPY routes/ ./routes/
 
 # --- CRITICAL NEW LINE: Copy the EJS templates ---
 COPY views/ ./views/
