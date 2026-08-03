@@ -94,6 +94,14 @@ resource "fastly_service_vcl" "retail_fastly" {
     }
   }
 
+  # --- RECONCILED (v9): Bot Management + ContentGuard, declaratively managed ---
+  product_enablement {
+    bot_management {
+      enabled      = true
+      contentguard = "on"
+    }
+  }
+
   snippet {
     name     = "require-demo-auth"
     type     = "recv"
@@ -185,6 +193,24 @@ EOT
         return (deliver);
       }
 EOT
+  }
+
+  # --- RECONCILED: Build 1 classification snippet (live since v56) ---
+  snippet {
+    name     = "frog-classify"
+    type     = "recv"
+    priority = 20
+    content  = file("${path.module}/vcl/frog-classify.vcl")
+  }
+
+  # --- RECONCILED: Build 3 telemetry endpoint (impersonation auth, no stored key) ---
+  logging_bigquery {
+    name           = "agentops-bq"
+    project_id     = var.project_id
+    dataset        = "agentops"
+    table          = "edge_requests"
+    account_name   = "fastly-logging"
+    format         = file("${path.module}/logging/bq-logformat.json")
   }
   
   force_destroy = true
