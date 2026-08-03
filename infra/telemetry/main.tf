@@ -1,7 +1,33 @@
-# AgentOps telemetry infrastructure (Build 3) — reconciled into Terraform.
-# NOTE: the BigQuery table schema is intentionally NOT managed here. Columns
-# evolve via bq/console migrations (that's how client_country was added).
-# Terraform owns resource existence; schema drift is ignored to avoid churn.
+# AgentOps telemetry plane — split OUT of the CI-applied infra/ stack so that
+# github-actions-deployer no longer needs project-level IAM / serviceAccountAdmin /
+# BigQuery grants. These are static, set-once resources; applied MANUALLY with
+# Owner creds:   cd infra/telemetry && terraform init && terraform apply
+# State: gs://three-dogs-tf-state/terraform/telemetry
+# NOTE: BigQuery table schema is intentionally NOT managed here (evolves via bq/console).
+
+terraform {
+  backend "gcs" {
+    bucket = "three-dogs-tf-state"
+    prefix = "terraform/telemetry"
+  }
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "google" {
+  project               = var.project_id
+  user_project_override = true
+  billing_project       = var.project_id
+}
+
+variable "project_id" {
+  type        = string
+  description = "The GCP Project ID"
+}
 
 resource "google_bigquery_dataset" "agentops" {
   dataset_id = "agentops"
@@ -21,8 +47,8 @@ resource "google_bigquery_table" "edge_requests" {
 }
 
 resource "google_service_account" "fastly_logging" {
-  account_id = "fastly-logging"
-  project    = var.project_id
+  account_id   = "fastly-logging"
+  project      = var.project_id
   display_name = "Fastly BigQuery logging (AgentOps)"
 }
 
