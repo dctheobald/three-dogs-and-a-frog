@@ -172,6 +172,39 @@ EOT
   }
 
   # --- RECONCILED: Build 3 telemetry endpoint (impersonation auth, no stored key) ---
+  # --- Build 2: Runtime Governance -- differential enforcement on X-Frog-Class ---
+  snippet {
+    name     = "frog-govern-init"
+    type     = "init"
+    priority = 100
+    content  = file("${path.module}/vcl/frog-govern-init.vcl")
+  }
+
+  snippet {
+    name     = "frog-govern"
+    type     = "recv"
+    priority = 30
+    content  = file("${path.module}/vcl/frog-govern.vcl")
+  }
+
+  snippet {
+    name     = "frog-govern-error"
+    type     = "error"
+    priority = 30
+    content  = file("${path.module}/vcl/frog-govern-error.vcl")
+  }
+
+  snippet {
+    name     = "frog-govern-deliver"
+    type     = "deliver"
+    priority = 30
+    content  = file("${path.module}/vcl/frog-govern-deliver.vcl")
+  }
+
+  dictionary {
+    name = "frog_config"
+  }
+
   logging_bigquery {
     name           = "agentops-bq"
     project_id     = var.project_id
@@ -223,3 +256,16 @@ resource "google_billing_budget" "agent_budget" {
   threshold_rules { threshold_percent = 0.5 }
   threshold_rules { threshold_percent = 0.9 }
 }
+
+resource "fastly_service_dictionary_items" "frog_config_items" {
+  for_each = {
+    for d in fastly_service_vcl.retail_fastly.dictionary : d.name => d if d.name == "frog_config"
+  }
+  service_id    = fastly_service_vcl.retail_fastly.id
+  dictionary_id = each.value.dictionary_id
+  items = {
+    "enforce" = "false"
+  }
+  manage_items = false
+}
+
