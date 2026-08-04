@@ -1,6 +1,6 @@
-# 🏕️ 3 Dogs and a Frog | Premium E-Commerce Platform
+# 🏕️ 3 Dogs and a Frog | Edge-Native Commerce & Agentic Traffic Intelligence
 
-[![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-Express_5-green.svg)](https://nodejs.org/)
 [![Stripe](https://img.shields.io/badge/Stripe-Checkout-blue.svg)](https://stripe.com/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED.svg)](https://www.docker.com/)
 [![GCP](https://img.shields.io/badge/Google_Cloud-Compute_Engine-4285F4.svg)](https://cloud.google.com/)
@@ -8,118 +8,121 @@
 
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dctheobald/three-dogs-and-a-frog/deploy.yml?branch=main&style=flat-square&label=Deployment)
 ![Terraform](https://img.shields.io/badge/Infrastructure-Terraform-623CE4?style=flat-square&logo=terraform)
-![Fastly](https://img.shields.io/badge/CDN-Fastly-e61305?style=flat-square&logo=fastly)
+![Fastly](https://img.shields.io/badge/Edge-Fastly-e61305?style=flat-square&logo=fastly)
 ![GCP](https://img.shields.io/badge/Cloud-GCP-4285F4?style=flat-square&logo=google-cloud)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 > [!IMPORTANT]
-> **DEMO SITE DISCLAIMER:** This is a technical demonstration project for a cloud engineering portfolio. This is **not** a real retail shop. No products are for sale, and no financial transactions are processed.
+> **DEMO SITE DISCLAIMER:** This is a technical demonstration project. It is **not** a real retail shop. No products are for sale, and no financial transactions are processed.
 
-A fully functional, full-stack e-commerce demonstration platform engineered for a luxury outdoor dog gear brand. This project showcases modern web architecture, secure third-party payment integration, containerization, and a fully automated cloud deployment pipeline.
+A full-stack e-commerce demonstration for a luxury outdoor dog-gear brand, fronted by the **Fastly** edge. Beyond the storefront, it is a live testbed for **edge-native traffic intelligence**: every request is classified (human / bot / verified-agent) at the edge, governed by rate limiting, and streamed to BigQuery for real-time observability.
 
 **🌐 Live Demo:** [https://www.3dogsandafrog.com](https://www.3dogsandafrog.com)
+**📊 Edge Observability (Looker):** *see the "Edge Traffic Classification" dashboard linked in the site footer.*
 
 ---
 
-## 🏗️ Architecture Diagram
-The following diagram illustrates the automated deployment pipeline and the global traffic flow.
+## 🏗️ Architecture
 
+![Architecture](architecture.png)
 
-
-### The Golden Flow:
-1.  **Developer Push:** Code is pushed to GitHub.
-2.  **GitHub Actions:** Executes a two-stage deployment:
-    * **Terraform:** Provisions/updates GCP infrastructure and core Fastly VCL logic.
-    * **Security Layering:** Executes `setup-fastly.sh` to layer on Edge Rate Limiting policies.
-3.  **Zero-Trust Delivery:** Users hit the Fastly Edge. Fastly collapses redirects and fetches misses from the GCP Origin (VM) over **strict HTTPS (Port 443)**. 
-4.  **Sidecar Proxy & Backend:** A **Caddy** container on the VM terminates TLS and proxies traffic to the Node.js container over an isolated internal Docker network (`frog-net`). The Node.js application operates as a pure backend service on **Port 3000**, completely decoupled from SSL duties.
+### The Golden Flow
+1.  **Developer Push:** Code is pushed to `main` on GitHub.
+2.  **GitHub Actions (single-stage):** Terraform provisions/updates GCP infrastructure **and the full Fastly edge configuration declaratively** (custom VCL, Bot Management + ContentGuard, the edge rate limiter, and BigQuery logging). The workflow then builds/pushes the Docker image and rolls the VM, and finally issues a Fastly `PURGE ALL`.
+3.  **Edge Delivery:** Users hit the Fastly edge, which collapses redirects, **classifies the request**, **enforces rate limits**, **logs to BigQuery**, and fetches cache misses from the GCP origin over strict HTTPS (443).
+4.  **Sidecar Proxy & Backend:** A **Caddy** container terminates TLS and reverse-proxies to the Node.js `retail-app` container over an isolated Docker network (`frog-net`); the app is a pure backend on **Port 3000**, decoupled from SSL.
 
 ---
 
-## ☁️ Infrastructure State
+## 🛰️ Edge Intelligence & Observability
 
-This project utilizes **Remote State** to allow seamless synchronization across multiple development environments.
+The edge is not just a CDN here — it is the **classification and control plane** for traffic.
 
-* **Backend:** Google Cloud Storage (`gs://three-dogs-tf-state`).
-* **State Locking:** Terraform automatically locks the state in GCS during an `apply` to prevent concurrent configuration changes from different machines.
+* **Bot Management + ContentGuard:** Every request is classified at the edge. `infra/vcl/frog-classify.vcl` stamps `X-Frog-Class` — one of `human`, `bot`, `verified-agent`, or `edge-served` (plus `redirect` for collapsed hops). ContentGuard is enabled declaratively (`product_enablement.bot_management.contentguard = "on"`).
+* **Edge Rate Limiting:** `three-dogs-rate-limiter` (~100 rps) shields the `e2-micro` origin from automated floods.
+* **AgentOps Telemetry:** Every request is streamed to BigQuery (`agentops.edge_requests`) via the `agentops-bq` logging endpoint, authenticated by **keyless impersonation** of the `fastly-logging` service account (no stored keys). This powers the Looker Studio **"Edge Traffic Classification"** dashboard (traffic mix, % automated, top automated clients, traffic-over-time).
+* **Wise Frog Assistant:** An in-store AI assistant backed by `@google/genai` (Gemini).
+
+---
+
+## ☁️ Infrastructure (Two Terraform Stacks)
+
+State is remote in Google Cloud Storage (`gs://three-dogs-tf-state`), with automatic state locking.
+
+* **`infra/` — CI-applied** (`terraform/state`): the VM origin, the Fastly service (VCL, Bot Management, rate limiter, BigQuery logging), firewall, and billing budget. Applied by the `github-actions-deployer` service account on every push to `main`.
+* **`infra/telemetry/` — Owner-applied** (`terraform/telemetry`): the BigQuery dataset/table, the `fastly-logging` service account, and its impersonation + `bigquery.dataEditor` bindings. This plane is deliberately **split out of CI** so the deploy bot needs no project-wide IAM or BigQuery admin. It is applied manually (`cd infra/telemetry && terraform apply`) and changes rarely.
+
+---
+
+## 🔐 Security & Least-Privilege
+
+* **CI deploy identity (`github-actions-deployer`):** scoped to exactly what a deploy needs — ArtifactRegistry Writer, Compute Instance Admin, Service Account User, and Secret Manager Accessor/Viewer. **No project-wide `setIamPolicy`, no service-account admin, no BigQuery write.**
+* **Origin identity (default compute SA):** scoped to image pull (ArtifactRegistry Reader), secret read (Secret Manager Accessor), and **write-only** observability (Logging / Monitoring / Telemetry Writer). **No `Editor`.**
+* **Secrets:** `STRIPE_SECRET_KEY` and `GEMINI_API_KEY` live in GCP Secret Manager, injected at runtime. Local Terraform variables live in `infra/.envrc` (managed via `direnv`, git-ignored).
+* **Container:** runs strictly as the non-root `node` user; a strict `.dockerignore` keeps local `.env`/`infra/` files out of the image.
+* **Telemetry plane isolation:** see the two-stack split above.
 
 ---
 
 ## ⚡ CDN & Caching Logic (Fastly Edge)
-Our edge configuration is defined in `infra/main.tf` to ensure high performance and origin shielding through custom VCL.
 
-### Cache Rules:
-* **Collapsed Redirects:** HTTP and Apex domain requests are redirected to Secure WWW in a single hop to reduce latency.
-* **Aggressive Static Caching:** We explicitly strip origin cookies from static assets (JPG, PNG, JS, CSS) at the edge, forcing a **24-hour (86400s) TTL**. 
-* **Origin Shielding:** By stripping `Set-Cookie` and `Vary` headers for static files, we maximize Cache Hit Ratios (CHR) and protect the `e2-micro` origin from unnecessary load.
-* **Automated Purging:** Every successful GitHub deployment triggers a `PURGE ALL` API call, ensuring users see new code instantly.
+Edge behaviour is defined declaratively in `infra/main.tf` for performance and origin shielding.
+
+* **Collapsed Redirects:** HTTP and apex requests are redirected to secure `www` in a single hop.
+* **Aggressive Static Caching:** origin cookies are stripped from static assets (JPG, PNG, JS, CSS) at the edge, forcing a **24-hour (86400s) TTL**.
+* **Origin Shielding:** stripping `Set-Cookie`/`Vary` on static files maximizes Cache Hit Ratio and protects the `e2-micro` origin.
+* **Automated Purging:** every successful deployment triggers a `PURGE ALL`.
 
 ---
 
 ## 🛠️ Local Development
-Follow these steps to replicate the "3 Dogs & a Frog" local build and test environment on a new macOS machine.
 
-1.  **Clone the Repository:**
+1.  **Clone:**
         git clone https://github.com/dctheobald/three-dogs-and-a-frog.git
-
-2.  **Install Prerequisites:**
-    * **Docker Desktop:** To run and test containers locally.
-    * **Node.js:** For local dependency management (`npm install`).
-    * **direnv:** To automatically load environment variables and infrastructure secrets.
-    * **Google Cloud SDK:** To authenticate with GCP.
-
-3.  **Sync Secrets:**
-    * Manually copy the `.envrc` (root), `.env` (root), and `infra/.envrc` files from an authorized machine.
-    * Run `direnv allow` in both the project root and the `infra/` directory.
-
+2.  **Prerequisites:** Docker Desktop, Node.js, `direnv`, Google Cloud SDK.
+3.  **Sync Secrets:** copy `.envrc` (root), `.env` (root), and `infra/.envrc` from an authorized machine, then run `direnv allow` in both the project root and `infra/`.
 4.  **Initialize Infrastructure:**
         cd infra
         gcloud auth application-default login
         terraform init
         terraform apply
-        ./setup-fastly.sh
-    *This will connect your local environment to the shared GCS state bucket and layer on the Edge Rate Limiter.*
+    *This connects to the shared GCS state and applies the full edge configuration — VCL, Bot Management, rate limiter, and BigQuery logging — in a single stage. (The BigQuery/telemetry plane is a separate Owner-applied stack in `infra/telemetry/`.)*
 
 ### 🏃‍♂️ Running the Application Locally
-Because this application uses Server-Side Rendering (EJS) for modular components, it must be served via Node.js.
-
-1. Ensure your `.env` file is populated with your Stripe keys.
-2. Run the application:
+1. Ensure `.env` holds your Stripe and Gemini keys.
+2. Run:
         npm install
         npm start
-3. Open your browser to `http://localhost:3000`
+3. Open `http://localhost:3000`.
 
 ---
 
-## 🚀 How to Deploy Changes
-Infrastructure and application deployments can be managed via **GitHub Actions** (fully automated) or **Locally** (manual) using the same underlying logic.
+## 🚀 Deploying Changes
 
-### 1. Application Updates (Node.js, HTML, CSS)
-Application updates are fully automated via CI/CD.
-* **Process:** Simply commit your code and `git push origin main`.
-* **Automation:** GitHub Actions will automatically trigger, build the new Docker image, and deploy it to the GCP VM.
+### 1. Application Updates (Node.js, EJS, CSS)
+Fully automated: commit and `git push origin main`. GitHub Actions builds the Docker image and rolls the GCP VM.
 
-### 2. Infrastructure Updates (Terraform, Fastly VCL, Edge Rate Limiting)
-Infrastructure changes can be deployed manually from your terminal for rapid testing, or via the automated GitHub Actions pipeline. The two-stage deployment sequence must be maintained to ensure all security layers (WAF + Edge Rate Limiting) are correctly applied:
-* **Step 1: Foundational Infra:** `cd infra && terraform apply`
-* **Step 2: Security Layering:** `./setup-fastly.sh` (This layers the Edge Rate Limiter configuration on top of the Terraform-managed service).
+### 2. Infrastructure Updates (Terraform / Fastly VCL / edge policy)
+Apply manually for rapid testing (`cd infra && terraform apply`) or via the Actions pipeline. The entire Fastly edge config — VCL, Bot Management, the rate limiter, and BigQuery logging — is **declarative in `infra/main.tf`**; there is no separate security-layering script. The `infra/telemetry/` stack is applied on its own, Owner-side, when the BigQuery/SA plane changes.
 
 ---
 
 ## 📁 Project Structure
-* `infra/`: Terraform HCL files and the `setup-fastly.sh` security script.
-* `views/`: EJS template files, including reusable components (header/footer).
-* `public/`: Static assets (images, CSS, client-side JS).
-* `server.js`: Express.js server logic and pure backend entry point.
-* `.github/workflows/`: YAML definitions for CI/CD, automation, and Purging.
-* `Dockerfile`: Container instructions for the highly-secured Node.js environment.
+* `infra/`: Terraform (`main.tf`, `network.tf`, `providers.tf`, `variables.tf`, `outputs.tf`).
+* `infra/vcl/`: Fastly edge VCL snippets (e.g. `frog-classify.vcl`, which stamps `X-Frog-Class`).
+* `infra/logging/`: BigQuery log-format definition (`bq-logformat.json`).
+* `infra/telemetry/`: Owner-applied Terraform stack (BigQuery + logging SA + impersonation).
+* `views/`: EJS templates and reusable partials (`header.ejs`, `footer.ejs`).
+* `public/`: static assets (images, CSS, client-side JS).
+* `server.js`: Express backend entry point.
+* `.github/workflows/`: CI/CD (`deploy.yml`).
+* `Dockerfile`: hardened Node.js container build.
 
 ---
 
 ## ⚠️ Security Requirements
-* **Infrastructure Secrets:** `infra/.envrc` (managed via `direnv`). Contains the GCP Project ID, Fastly API Key, and Terraform variables. This file is ignored by Git to prevent credential leaks.
-* **GCP Secrets:** `STRIPE_SECRET_KEY` is stored in GCP Secret Manager and injected at runtime via the VM's startup script.
-* **CI Secrets:** `FASTLY_API_KEY` and `FASTLY_SERVICE_ID` must be configured in GitHub Repository Secrets.
-* **Terraform Metadata:** The `app_image` tag on the GCP VM is dynamically injected by GitHub Actions. Terraform explicitly ignores this tag using a lifecycle block to prevent overwriting the active container image.
-* **Docker Security:** The container runs strictly as the non-root `node` user. A strict .dockerignore file ensures local .env and infra/ files never leak into the production build.
-* **Threat Neutralization:** SQL injection attempts trigger custom, user-friendly block pages rendered directly at the Fastly Edge.
+* **Infrastructure Secrets:** `infra/.envrc` (via `direnv`) holds the GCP Project ID, Fastly API key, and Terraform variables. Git-ignored.
+* **GCP Secrets:** `STRIPE_SECRET_KEY` and `GEMINI_API_KEY` in GCP Secret Manager, injected at runtime.
+* **CI Secrets (GitHub):** `GCP_CREDENTIALS`, `GCP_PROJECT_ID`, `GCP_BILLING_ACCOUNT_ID`, `FASTLY_API_KEY`, `FASTLY_SERVICE_ID`.
+* **Terraform Metadata:** the VM `app_image` tag is injected by GitHub Actions; Terraform ignores it via a lifecycle block to avoid overwriting the live image.
+* **Docker Security:** container runs as non-root `node`; strict `.dockerignore`.

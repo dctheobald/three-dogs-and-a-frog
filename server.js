@@ -162,6 +162,7 @@ app.get('/', (req, res) => res.render('index', { title: 'Home' }));
 app.get('/shop', (req, res) => res.render('shop', { title: 'Shop' }));
 app.get('/cart', (req, res) => res.render('cart', { title: 'Cart' }));
 app.get('/success', (req, res) => res.render('success', { title: 'Success' }));
+app.get('/observability', (req, res) => res.render('observability', { title: 'Edge Observability' }));
 
 app.post('/create-checkout-session', async (req, res) => {
     try {
