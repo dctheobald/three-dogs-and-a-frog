@@ -14,3 +14,7 @@ set req.http.X-Frog-Class = var.frog_class;
 if (fastly.bot.detected && fastly.bot.name != "") {
   set req.http.X-Frog-Bot-Name = fastly.bot.name;
 }
+
+# Build 2 telemetry: pseudonymous per-client key (hashed IP, not PII) for
+# top-throttled-clients analysis on the observability dashboard.
+set req.http.X-Frog-Client = substr(digest.hash_sha256(client.ip), 0, 12);
