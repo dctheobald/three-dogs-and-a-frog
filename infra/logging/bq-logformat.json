@@ -1,6 +1,7 @@
 {
   "timestamp": "%{begin:%Y-%m-%dT%H:%M:%S}t",
   "class": "%{req.http.X-Frog-Class}V",
+  "govern": "%{req.http.X-Frog-Govern}V",
   "bot_name": "%{json.escape(req.http.X-Frog-Bot-Name)}V",
   "method": "%{req.method}V",
   "path": "%{json.escape(req.url)}V",
@@ -8,5 +9,6 @@
   "latency_ms": %{time.elapsed.msec}V,
   "cache_state": "%{fastly_info.state}V",
   "client_region": "%{client.geo.region}V",
-  "client_country": "%{client.geo.country_code}V"
+  "client_country": "%{client.geo.country_code}V",
+  "client_key": "%{req.http.X-Frog-Client}V"
 }
