@@ -44,6 +44,7 @@ resource "google_compute_instance" "retail_origin" {
       docker run -d --name retail-app --network frog-net --restart always \
       --env DOTENVX_IGNORE=true \
       -e STRIPE_SECRET_KEY="${data.google_secret_manager_secret_version.stripe_key.secret_data}" \
+      -e ARC_VIRTUAL_KEY="${data.google_secret_manager_secret_version.arc_key.secret_data}" \
       -e GCP_PROJECT_ID="${var.project_id}" \
       -e PORT="3000" \
       -e NODE_ENV="${var.node_env}" \

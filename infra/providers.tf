@@ -25,8 +25,8 @@ data "google_secret_manager_secret_version" "stripe_key" {
   version = "latest"
 }
 
-data "google_secret_manager_secret_version" "gemini_key" {
-  secret  = "gemini-api-key"
+data "google_secret_manager_secret_version" "arc_key" {
+  secret  = "arc-wisefrog-virtual-key"
   version = "latest"
 }
 
