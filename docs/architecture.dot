@@ -18,8 +18,17 @@ digraph arch {
   <TABLE BORDER="2" CELLBORDER="0" CELLSPACING="6" CELLPADDING="9" BGCOLOR="#e8f0fe" COLOR="#4285F4">
     <TR><TD><B><FONT COLOR="#1a56c4" POINT-SIZE="16">GCP COMPUTE ENGINE</FONT></B><BR/><FONT POINT-SIZE="10">e2-micro &#183; Docker network frog-net</FONT></TD></TR>
     <TR><TD BGCOLOR="white"><FONT POINT-SIZE="12"><B>Caddy</B> &#183; TLS sidecar (:443, self-signed)</FONT></TD></TR>
-    <TR><TD BGCOLOR="white"><FONT POINT-SIZE="12"><B>Node.js Retail App</B> (:3000)<BR/>Wise Frog &#183; Gemini 3.6 (Vertex, global)<BR/>MCP server /mcp &#183; Stripe checkout<BR/>single source: data/products.json</FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT POINT-SIZE="12"><B>Node.js Retail App</B> (:3000)<BR/>Wise Frog &#183; Gemini 3.5 Flash via ARC<BR/>MCP server /mcp &#183; Stripe checkout<BR/>single source: data/products.json</FONT></TD></TR>
   </TABLE>>];
+
+  arc [shape=none, margin=0, label=<
+  <TABLE BORDER="2" CELLBORDER="0" CELLSPACING="6" CELLPADDING="9" BGCOLOR="#fdeceb" COLOR="#e34948">
+    <TR><TD><B><FONT COLOR="#c0392b" POINT-SIZE="14">FASTLY ARC</FONT></B><BR/><FONT POINT-SIZE="10">AI Runtime Control &#183; arc.fastly.app</FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT POINT-SIZE="11">virtual key &#183; govern &#183; attribute</FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT POINT-SIZE="11">per-key model / token / session logs</FONT></TD></TR>
+  </TABLE>>];
+
+  gemini [shape=box, style="rounded,filled", fillcolor="#e8f0fe", color="#4285F4", fontcolor="#1a56c4", fontsize=12, label="Gemini 3.5 Flash\n(Developer API)"];
 
   stripe [shape=box, style="rounded,filled", fillcolor="#eeecff", color="#635bff", fontcolor="#4b45c6", fontsize=13, label="Stripe\nCheckout"];
   bq [shape=none, margin=0, label=<
@@ -29,11 +38,13 @@ digraph arch {
     <TR><TD BGCOLOR="white"><FONT POINT-SIZE="11">agent_commerce &#183; checkouts &amp; revenue</FONT></TD></TR>
   </TABLE>>];
   looker [shape=box, style="rounded,filled", fillcolor="#e9f7ee", color="#34a853", fontsize=11, label="Looker Studio\nEdge Traffic dashboard\n(Identify / Govern / Monetize)"];
-  secret [shape=box, style="rounded,filled", fillcolor="#fff8e1", color="#f9a825", fontsize=10, label="Secret Manager\nStripe & Gemini keys"];
+  secret [shape=box, style="rounded,filled", fillcolor="#fff8e1", color="#f9a825", fontsize=10, label="Secret Manager\nStripe key & ARC virtual key"];
   registry [shape=box, style="rounded,filled", fillcolor="#f0efe9", color="#b4b2a9", fontsize=10, label="Artifact Registry\ncontainer images"];
 
   user -> fastly [label="HTTPS", penwidth=2];
   fastly -> gcp [label="HTTPS 443\n(cache miss)", penwidth=2];
+  gcp -> arc [label="LLM calls\n(OpenAI SDK, virtual key)", color="#e34948", fontcolor="#c0392b", penwidth=2];
+  arc -> gemini [label="governed", color="#e34948", fontcolor="#c0392b"];
   gcp -> stripe [label="checkout"];
   fastly -> bq [label="real-time logs", style=dashed, color="#669df6", fontcolor="#3b78c4"];
   bq -> looker [color="#34a853"];

@@ -10,7 +10,7 @@
 A luxury pet-gear storefront that demonstrates the edge doing three jobs, end to end, with no second stack:
 
 - **Identify** — Fastly Bot Management (ContentGuard) classifies every request as human, verified agent, or untrusted bot.
-- **Govern** — Edge Rate Limiting protects the whole site; agent-surface enforcement allows humans/trusted agents and blocks untrusted bots on the sensitive `/api/agent` endpoint.
+- **Govern** — Edge Rate Limiting protects the whole site; agent-surface enforcement allows humans/trusted agents and blocks untrusted bots on the sensitive `/api/agent` endpoint. And the storefront's own AI assistant, the Wise Frog, has every model call routed through **Fastly AI Runtime Control (ARC)** — governing the AI *runtime*, not just the traffic to it.
 - **Monetize** — an agent-ready commerce surface: a product catalog served entirely from the edge, a real MCP endpoint, and Stripe checkout — with human-vs-agent revenue attributed in telemetry.
 
 The dashboard at `/observability` (Looker Studio) tells the same three-act story from live edge logs.
@@ -32,12 +32,15 @@ Fastly VCL service  (id wBCY7mB7jg6n24pJqN5q40)
    v
 GCP VM origin  (three-dog-one-frog-prod, us-central1-c, project three-dogs-frog-store)
    - Docker: node:20-alpine, Express (server.js)
-   - Wise Frog assistant  (Gemini 3.6 Flash via Vertex, global endpoint)
+   - Wise Frog assistant  --->  Fastly ARC (arc.fastly.app)  --->  Gemini 3.5 Flash (Developer API)
+        (OpenAI SDK + virtual key; ARC governs, attributes & logs every LLM call)
    - /mcp  MCP server  (@modelcontextprotocol/sdk, JSON response mode)
    - Stripe checkout (test mode)
 ```
 
 **Single source of truth:** `data/products.json` drives all four consumers — the storefront views, the Wise Frog inventory, the MCP tools, and (projected at deploy) the edge `frog_catalog` dictionary. Edit the file, everything moves.
+
+**Wise Frog → ARC path:** the app calls `arc.fastly.app/v1/chat/completions` (OpenAI-compatible) with the `ARC_VIRTUAL_KEY` and model `gemini/gemini-3.5-flash`. ARC forwards to the Gemini Developer API using the provider key stored in its own config — the app never holds the raw Gemini key.
 
 ## 3. Edge request flow (VCL, recv order)
 
@@ -57,11 +60,13 @@ Error/fetch/deliver snippets render the synthetic catalog (900), agent-gate 403,
 |---------|----------------|--------------|
 | Identify | Bot Management (ContentGuard) | `frog-classify` -> `X-Frog-Class`, dashboard Identify row |
 | Govern | Edge Rate Limiting + agent-surface enforcement | site rate limiter + `/api/agent` allow/block |
-| Govern | **ARC (AI Runtime Control)** | *TBD — integration pending internal docs* |
+| Govern | **ARC (AI Runtime Control)** | Wise Frog LLM calls routed through ARC (`arc.fastly.app`); per-virtual-key model/token/session attribution in the ARC dashboard (Tools → AI Runtime Control) |
 | Monetize | Edge dictionary (catalog) served at the edge | `/catalog` served with no origin |
 | Monetize | (3rd-party) MCP + Stripe | `/mcp` tools, Stripe test checkout |
 
 > Note: on a VCL/Deliver service the VCL-native edge data store is an **Edge Dictionary** (`frog_catalog`); Config Store is its Compute-platform sibling. Same concept — edge-cached key/value served with no origin.
+
+> ARC status (as of this build): **beta**, so static-key auth only and no in-ARC budget/rate caps yet — both land at GA (Sept 15, 2026), along with Passthrough SSO / Google-identity auth that will let ARC reach Gemini/Vertex via ADC and retire the API key entirely.
 
 ## 5. Live knobs you'll touch
 
@@ -85,6 +90,13 @@ Open your talk in **shadow** if you want to flip to **enforce** live on stage. A
 ### 5.3 Product catalog
 Edit `data/products.json` and deploy. `stock_qty` drives everything: `0` -> Out of Stock (checkout refused), `1–5` -> Low Stock, `>5` -> In Stock. Every purchase path (human cart, Wise Frog, MCP) validates stock, so out-of-stock/over-quantity orders are refused (409) and the storefront shows a disabled "Sold Out" button.
 
+### 5.4 ARC — the Wise Frog's LLM control plane
+Configured in the **Fastly control panel → Tools → AI Runtime Control** (superuser-only), not Terraform:
+- **Provider:** Gemini, base URL `https://generativelanguage.googleapis.com`, holding the Gemini Developer API key (a service-account-bound key on `three-dogs-frog-store`, restricted to the Generative Language API).
+- **Virtual key:** `arc-wisefrog-virtual-key`, mapped to `gemini-3.5-flash`. Its value is stored in Secret Manager and injected into the container as `ARC_VIRTUAL_KEY` (the app presents this, never the raw Gemini key).
+- **Watch usage live:** the **Logging** tab is per-request and near-real-time (filter by `arc-wisefrog-virtual-key`); the **Summary** tab is an hourly rollup, so it lags — trust Logging during a demo.
+- **Change model / rotate:** edit the provider or refresh the virtual key in the control panel. A new virtual-key value means updating the `arc-wisefrog-virtual-key` Secret Manager secret and rolling the VM.
+
 ## 6. Demo-day pre-flight (~5 min before)
 
 ### 6.1 Warm-up (fills the dashboard's live 60-min window)
@@ -99,10 +111,11 @@ In Cowork / Claude Code you can also just invoke the **`agentops-preflight`** sk
 ### 6.2 Manual steps a script can't do
 - **Humans lane:** only a real browser produces `human` classifications — click around the storefront on a laptop/phone, and chat with the Wise Frog (including "buy the backpack") to seed human + agent-sale rows.
 - **Looker window:** set the report's date & time picker to **Last 60 minutes**, wait ~60s for the log flush + BigQuery streaming, then hit **Refresh data**.
+- **ARC lane:** the Wise Frog chats above also populate the ARC dashboard — check **Tools → AI Runtime Control → Logging** for requests on `arc-wisefrog-virtual-key` if you want to show the AI-governance view live.
 
 ## 7. Deploy & rollback
 
-Push to `main` -> GitHub Actions `deploy.yml`: `terraform apply` -> Docker build/push -> VM metadata update + reset -> Fastly purge. Expect a brief VM cold-start (503) right after. `.md` and `.github/**` changes are path-ignored (no deploy).
+Push to `main` -> GitHub Actions `deploy.yml`: `terraform apply` -> Docker build/push -> VM metadata update + reset -> Fastly purge. Expect a brief VM cold-start (503) right after. `.md`, `docs/**`, `.claude/**`, and `.github/**` changes are path-ignored (no deploy). A manual `workflow_dispatch` trigger is available (`gh workflow run "Deploy to Google Cloud" --ref main`).
 
 ```bash
 gh run watch "$(gh run list --workflow=deploy.yml --branch=main --limit=1 --json databaseId --jq '.[0].databaseId')" --exit-status
@@ -118,15 +131,19 @@ Fastly `logging_bigquery` (format `infra/logging/bq-logformat.json`) -> `three-d
 
 **Schema changes must precede the log-format deploy** — add BQ columns first (via `bq query 'ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...'`), then ship the format, or Fastly's inserts drop on the unknown field.
 
+**ARC keeps its own accounting** (virtual key, provider, model, input/output tokens, session, timestamp) in the Fastly control panel — separate from this BigQuery pipeline. That's the surface for the Wise Frog's model/token/spend attribution; BigQuery remains the edge-traffic + commerce telemetry.
+
 ## 9. Verify current live config
 
 ```bash
 cd "$HOME/Documents/three-dogs-and-a-frog/infra"; direnv allow . 2>/dev/null; eval "$(direnv export zsh)"
 fastly service version list | tail -5
 fastly service dictionary-entry list --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --service-id=wBCY7mB7jg6n24pJqN5q40
-grep -n 'model:' ../server.js
+grep -nE 'ARC_BASE_URL|ARC_MODEL|arc.fastly' ../server.js
 bq show --schema three-dogs-frog-store:agentops.edge_requests
 ```
+
+Confirm the container is on the ARC path: `gcloud compute ssh three-dog-one-frog-prod --zone=us-central1-c --command="docker logs --tail 5 retail-app"` should show `Wise Frog routed through Fastly ARC`.
 
 ## 10. Gotchas & lessons (things that bit us)
 
@@ -134,7 +151,8 @@ bq show --schema three-dogs-frog-store:agentops.edge_requests
 - **zsh:** never paste `#`-comment lines (no `interactive_comments`) and always brace variables in table refs (`${PROJ}:agentops` — bare `$PROJ:a` triggers the `:a` path modifier). Also avoid `!` in pasted commands (zsh history expansion — `event not found`); single-quote grep patterns. Prefer writing scripts to a file and running with `bash`.
 - **Node 20+** required — the MCP SDK needs `globalThis.crypto`, absent in Node 18 (and 18 is EOL).
 - **MCP behind a CDN:** construct the transport with `enableJsonResponse: true` — the default SSE stream holds the connection open and trips Fastly's backend timeout (503).
-- **Gemini 3.6 Flash** lives on the Vertex **global** endpoint (regional = 404); needs `@google/genai` >= 2.15; and it chains tool calls, so the `/api/agent` handler must **loop** over function calls until the model returns text (a single round returns empty replies).
+- **Wise Frog runs through Fastly ARC**, not the model provider directly — OpenAI SDK pointed at `arc.fastly.app/v1`, model `gemini/gemini-3.5-flash`, authed with the ARC **virtual key** (the raw Gemini key lives only in ARC's provider config). ARC beta is **static-key only** (ADC / Passthrough SSO is a GA feature), and per-key **budget/rate limits are GA too** — so today the cost ceiling is the Gemini Developer API **prepay** balance plus the edge blocking bots before they reach the model. `gemini-3.5-flash` is a **reasoning model** and chains tool calls, so the `/api/agent` loop must echo each assistant turn (including `reasoning_details` and `tool_calls`) back into the message history before answering the tool call, or the chain breaks.
+- **Boot disk fills from per-commit image tags.** Each deploy pulls a new `retail-app-image:<sha>` and old ones aren't pruned; after ~20 deploys the disk fills and the next `docker run` dies with `no space left on device` — the container never starts and Caddy 502s. Fixed: the startup-script now runs `docker image prune -a -f` before pulling, so every deploy reclaims space.
 - **Dockerfile** must `COPY data/ ./data/` or the app crash-loops on the missing `products.json` (502).
 - **Stripe** checkout builds its success/cancel URLs from `SITE_BASE`, so it works for the browser, curl, and agents alike (no `Origin`-header dependency).
 - **Dictionary flips** (enforce) take ~1–2 min to propagate — don't test the toggle 10 seconds after flipping.
@@ -144,9 +162,10 @@ bq show --schema three-dogs-frog-store:agentops.edge_requests
 
 | Symptom | Likely cause | Check / fix |
 |---------|--------------|-------------|
-| Home 502 (sustained) | app crash-loop | serial console: `gcloud compute instances get-serial-port-output three-dog-one-frog-prod --zone=us-central1-c`; look for `Cannot find module` / stack trace |
+| Home 502 (sustained) | app crash-loop **or** full boot disk (image pull failed) | serial console: `gcloud compute instances get-serial-port-output three-dog-one-frog-prod --zone=us-central1-c`; look for `Cannot find module` (crash) or `no space left on device` (disk). Disk recovery: `docker image prune -a -f` then reset the VM — the startup-script prune prevents recurrence |
 | Home 503 (brief) | VM cold-start after deploy | wait 60–90s, re-poll |
+| Wise Frog "trail radio static" (500) | ARC key missing/invalid or provider misconfig | confirm `ARC_VIRTUAL_KEY` is injected (`docker logs retail-app` shows the ARC line); check ARC → Providers (Gemini key valid) and ARC → Logging for the request |
+| Wise Frog blank reply | model chained tools, loop didn't echo the assistant turn | confirm the `/api/agent` tool-call loop pushes the assistant message (with `tool_calls` + `reasoning_details`) back before the tool result |
 | `/catalog` 403 with key | `agent_key` mismatch | confirm dict entry vs the header value |
-| Wise Frog blank reply | model chained tools, handler didn't loop | confirm the `while` function-call loop in `server.js` |
 | Dashboard empty | quiet 60-min window | run 6.1 warm-up, set Looker window, Refresh |
 | Govern shows only "Blocked" | no human `/api/agent` traffic | browse the Wise Frog to add "Allowed: human" |
