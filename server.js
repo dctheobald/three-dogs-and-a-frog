@@ -93,12 +93,12 @@ if (geminiApiKey) {
     ai = new GoogleGenAI({
         vertexai: true,
         project: gcpProjectId,
-        location: 'us-central1'
+        location: 'global'
     });
 } else {
     // FALLBACK
     console.warn("⚠️ Warning: No API Key or Project ID found! AI may fail.");
-    ai = new GoogleGenAI({ vertexai: true, location: 'us-central1' });
+    ai = new GoogleGenAI({ vertexai: true, location: 'global' });
 }
 
 // ==========================================
@@ -167,7 +167,7 @@ app.post('/api/agent', async (req, res) => {
             console.log(`🆕 Starting new AI memory session: ${sessionId}`);
             // If no history exists, create the chat and store it in the Map
             chat = ai.chats.create({
-                model: "gemini-2.5-flash",
+                model: "gemini-3.6-flash",
                 config: {
                     systemInstruction: `You are the 'Wise Frog', the expert trail guide and sales assistant for the '3 Dogs and a Frog' outdoor gear storefront. 
                     Constraint 1: You must keep every response strictly under 3 sentences.
