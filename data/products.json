@@ -1,0 +1,19 @@
+[
+  { "id": "harness",  "name": "Reflective Night Harness",
+    "price": 45.99, "currency": "USD", "stock_qty": 0,
+    "image": "/images/harness.jpg", "category": "apparel", "categoryLabel": "Dog Apparel",
+    "size": "medium", "cardId": 1, "badge": null,
+    "description": "High-visibility reflective harness for low-light trail runs and night walks." },
+
+  { "id": "bowl",     "name": "Heavy-Duty Stainless Steel Basecamp Bowl",
+    "price": 24.50, "currency": "USD", "stock_qty": 3,
+    "image": "/images/bowl.jpg", "category": "camp", "categoryLabel": "Camp Gear",
+    "size": "small", "cardId": 2, "badge": null,
+    "description": "Heavy-gauge stainless bowl with a weighted base that won't tip on uneven ground." },
+
+  { "id": "backpack", "name": "High-Capacity Trail Backpack",
+    "price": 65.00, "currency": "USD", "stock_qty": 24,
+    "image": "/images/backpack.jpg", "category": "packs", "categoryLabel": "Packs & Carriers",
+    "size": "large", "cardId": 3, "badge": "Frog-Tested Waterproof",
+    "description": "65L waterproof trail pack, frog-tested through three creek crossings." }
+]

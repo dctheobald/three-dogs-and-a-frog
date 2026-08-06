@@ -3,6 +3,57 @@ const express = require('express');
 const path = require('path');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { GoogleGenAI } = require('@google/genai');
+const products = require('./data/products.json');
+const productsById = Object.fromEntries(products.map(p => [p.id, p]));
+const STATUS_THRESHOLD = 5;
+function statusFor(qty) {
+  if (qty <= 0) return 'Out of Stock';
+  if (qty <= STATUS_THRESHOLD) return 'Low Stock';
+  return 'In Stock';
+}
+
+const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
+const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
+const { z } = require('zod');
+const SITE_BASE = 'https://www.3dogsandafrog.com';
+function toAgentView(p) {
+  return { id: p.id, name: p.name, price: p.price, currency: p.currency, in_stock: p.stock_qty > 0, stock_qty: p.stock_qty, image: SITE_BASE + p.image };
+}
+function buildMcpServer() {
+  const server = new McpServer({ name: 'three-dogs-frog-agentic-commerce', version: '1.0.0' });
+  server.registerTool('list_products',
+    { description: 'List every product in the 3 Dogs & a Frog catalog with price and live availability.' },
+    async () => ({ content: [{ type: 'text', text: JSON.stringify(products.map(toAgentView)) }] })
+  );
+  server.registerTool('get_product',
+    { description: 'Get full detail for one product by id (harness, bowl, backpack).', inputSchema: { id: z.string().describe('Product id, e.g. "backpack"') } },
+    async ({ id }) => {
+      const prod = productsById[id];
+      if (!prod) return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: 'product not found', id }) }] };
+      return { content: [{ type: 'text', text: JSON.stringify({ ...toAgentView(prod), description: prod.description, category: prod.categoryLabel }) }] };
+    }
+  );
+  server.registerTool('checkout',
+    { description: 'Create a checkout session for one or more items. Validates stock and returns a Stripe checkout URL (test mode).', inputSchema: { items: z.array(z.object({ id: z.string(), qty: z.number().int().positive() })).describe('Line items to purchase') } },
+    async ({ items }) => {
+      const problems = [], lineItems = [];
+      for (const it of items) {
+        const prod = productsById[it.id];
+        if (!prod) { problems.push('unknown product: ' + it.id); continue; }
+        if (prod.stock_qty <= 0) { problems.push(prod.name + ' is out of stock'); continue; }
+        if (it.qty > prod.stock_qty) { problems.push('only ' + prod.stock_qty + ' of ' + prod.name + ' in stock (requested ' + it.qty + ')'); continue; }
+        lineItems.push({ price_data: { currency: 'usd', product_data: { name: prod.name }, unit_amount: Math.round(prod.price * 100) }, quantity: it.qty });
+      }
+      if (problems.length) return { isError: true, content: [{ type: 'text', text: JSON.stringify({ status: 'rejected', problems }) }] };
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'], mode: 'payment', line_items: lineItems,
+        success_url: SITE_BASE + '/success?session_id={CHECKOUT_SESSION_ID}', cancel_url: SITE_BASE + '/cart'
+      });
+      return { content: [{ type: 'text', text: JSON.stringify({ status: 'ok', checkout_url: session.url, session_id: session.id }) }] };
+    }
+  );
+  return server;
+}
 
 const app = express();
 
@@ -74,13 +125,10 @@ const addToCartTool = {
 // 3. Local Mock Database Function
 function checkInventoryLocally(productName) {
     console.log(`🧠 [Database] Looking up secure data for: ${productName}`);
-    const mockDb = {
-        "backpack": { status: "In Stock", price: 65.00, name: "High-Capacity Trail Backpack", image: "/images/backpack.jpg" },
-        "bowl": { status: "Low Stock", price: 24.50, name: "Basecamp Bowl", image: "/images/bowl.jpg" },
-        "harness": { status: "Out of Stock", price: 45.99, name: "Night Harness", image: "/images/harness.jpg" }
-    };
-    const key = Object.keys(mockDb).find(k => productName.toLowerCase().includes(k));
-    return key ? mockDb[key] : { status: "Not Found" };
+    const key = Object.keys(productsById).find(k => productName.toLowerCase().includes(k));
+    if (!key) return { status: "Not Found" };
+    const prod = productsById[key];
+    return { status: statusFor(prod.stock_qty), price: prod.price, name: prod.name, image: prod.image };
 }
 
 // 🧠 4. In-memory store to remember conversation history!
@@ -158,8 +206,8 @@ app.post('/api/agent', async (req, res) => {
 // ==========================================
 // --- PAGE & STRIPE ROUTERS ---
 // ==========================================
-app.get('/', (req, res) => res.render('index', { title: 'Home' }));
-app.get('/shop', (req, res) => res.render('shop', { title: 'Shop' }));
+app.get('/', (req, res) => res.render('index', { title: 'Home', products }));
+app.get('/shop', (req, res) => res.render('shop', { title: 'Shop', products }));
 app.get('/cart', (req, res) => res.render('cart', { title: 'Cart' }));
 app.get('/success', (req, res) => res.render('success', { title: 'Success' }));
 app.get('/observability', (req, res) => res.render('observability', { title: 'Edge Observability' }));
@@ -178,6 +226,21 @@ app.post('/create-checkout-session', async (req, res) => {
         res.json({ url: session.url });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+app.post('/mcp', async (req, res) => {
+  const server = buildMcpServer();
+  try {
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    res.on('close', () => { transport.close(); server.close(); });
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (e) {
+    console.error('MCP error:', e);
+    if (!res.headersSent) res.status(500).json({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal server error' }, id: null });
+  }
+});
+app.get('/mcp', (req, res) => res.status(405).json({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
+app.delete('/mcp', (req, res) => res.status(405).json({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {

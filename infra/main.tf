@@ -167,7 +167,7 @@ EOT
   snippet {
     name     = "frog-classify"
     type     = "recv"
-    priority = 20
+    priority = 5
     content  = file("${path.module}/vcl/frog-classify.vcl")
   }
 
@@ -203,6 +203,24 @@ EOT
 
   dictionary {
     name = "frog_config"
+  }
+
+  dictionary {
+    name = "frog_catalog"
+  }
+
+  snippet {
+    name     = "frog-agent-recv"
+    type     = "recv"
+    priority = 15
+    content  = file("${path.module}/vcl/frog-agent-recv.vcl")
+  }
+
+  snippet {
+    name     = "frog-agent-error"
+    type     = "error"
+    priority = 20
+    content  = file("${path.module}/vcl/frog-agent-error.vcl")
   }
 
   logging_bigquery {
@@ -269,3 +287,27 @@ resource "fastly_service_dictionary_items" "frog_config_items" {
   manage_items = false
 }
 
+locals {
+  catalog_full  = jsondecode(file("${path.module}/../data/products.json"))
+  catalog_agent = [for p in local.catalog_full : {
+    id        = p.id
+    name      = p.name
+    price     = p.price
+    currency  = p.currency
+    in_stock  = p.stock_qty > 0
+    stock_qty = p.stock_qty
+    image     = "https://www.3dogsandafrog.com${p.image}"
+  }]
+}
+
+resource "fastly_service_dictionary_items" "frog_catalog_items" {
+  for_each = {
+    for d in fastly_service_vcl.retail_fastly.dictionary : d.name => d if d.name == "frog_catalog"
+  }
+  service_id    = fastly_service_vcl.retail_fastly.id
+  dictionary_id = each.value.dictionary_id
+  manage_items  = true
+  items = {
+    catalog = jsonencode(local.catalog_agent)
+  }
+}
