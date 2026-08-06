@@ -69,5 +69,5 @@ jobs:
       - name: Purge Fastly Cache
         run: |
           sleep 5
-          curl -X POST -H "Fastly-Key: ${{ secrets.FASTLY_API_KEY }}" \
+          curl -X POST -H "Fastly-Key: ${{ secrets.FASTLY_PURGE_TOKEN }}" \
             https://api.fastly.com/service/${{ secrets.FASTLY_SERVICE_ID }}/purge_all
