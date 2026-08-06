@@ -9,6 +9,7 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - '.github/**' # Keeps pipeline triggers safe
+      - '.claude/**' # Skill/tooling changes don't ship
 
 jobs:
   build-and-deploy:
