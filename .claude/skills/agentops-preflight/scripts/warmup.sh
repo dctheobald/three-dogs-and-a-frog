@@ -116,9 +116,29 @@ run_warmup() {
   echo "  sent ${WARMUP_TOTAL} (2xx=${WARMUP_2XX} 4xx=${WARMUP_4XX} 5xx=${WARMUP_5XX} 429=${WARMUP_429})"
 }
 
+# --- Agent-surface governance phase ----------------------------------------
+# Short burst of POST /api/agent with AI-agent user-agents. Under ENFORCE mode the
+# edge returns 429 before the request reaches origin (no AI/Vertex cost), populating
+# the dashboard's "Blocked: untrusted bot" governance line.
+AGENT_REQUESTS="${AGENT_REQUESTS:-8}"
+run_agent_governance() {
+  local i ua code blocked=0
+  echo "Exercising /api/agent governance — ${AGENT_REQUESTS} POSTs (AI-agent UAs)."
+  for (( i = 0; i < AGENT_REQUESTS; i++ )); do
+    ua="${ai_agents[RANDOM % ${#ai_agents[@]}]}"
+    if [[ "$DRY_RUN" == "1" ]]; then code=429; else
+      code=$(curl -s -o /dev/null -w '%{http_code}' -A "$ua" -X POST "${SITE}/api/agent" -H 'Content-Type: application/json' -d '{"message":"hi"}' || echo 000)
+    fi
+    [[ "$code" == "429" ]] && blocked=$((blocked + 1))
+    if [[ "$DRY_RUN" != "1" ]]; then sleep "$WARMUP_PACE"; fi
+  done
+  echo "  /api/agent: ${AGENT_REQUESTS} sent, ${blocked} blocked (429 => enforce on; 200 => shadow/warn)."
+}
+
 # Run when executed directly; stay quiet (just define functions) when sourced.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   run_warmup
+  run_agent_governance
   cat <<'DONE'
 
 Bot warm-up complete. Two manual steps a script can't do:

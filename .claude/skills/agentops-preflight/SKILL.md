@@ -9,7 +9,7 @@ Prepares the **3D&aF: AgentOps — Edge Traffic Classification** Looker Studio d
 
 ## What this automates vs. what it can't
 
-**Automates** — the tedious part: a paced burst of requests with automation/bot user-agents that Fastly ContentGuard classifies as `bot`, populating the last hour so the time-series, donut, and "% Automated" callout have shape.
+**Automates** — the tedious part: a paced burst of requests with automation/bot user-agents that Fastly ContentGuard classifies as `bot`, populating the last hour so the time-series, donut, and "% Automated" callout have shape. It also fires a short paced burst of `POST /api/agent` calls that the edge blocks under enforce mode, giving the Govern lane's "Blocked: untrusted bot" series shape.
 
 **Cannot automate (remind the user, don't pretend otherwise):**
 - **The Looker window.** Set the report's date & time picker to the last 60 minutes so the live view matches the window the warm-up fills. The picker is a report control, set by hand at demo time.

@@ -20,6 +20,8 @@ A full-stack e-commerce demonstration for a luxury outdoor dog-gear brand, front
 **🌐 Live Demo:** [https://www.3dogsandafrog.com](https://www.3dogsandafrog.com)
 **📊 Edge Observability (Looker):** *see the "Edge Traffic Classification" dashboard linked in the site footer.*
 
+**🎤 Presenting the demo?** See the **[demo runbook](docs/DEMO-RUNBOOK.md)** — architecture, the shadow/enforce governance toggle, demo-day pre-flight (warm-up), deploy/rollback, and troubleshooting.
+
 ---
 
 ## 🏗️ Architecture

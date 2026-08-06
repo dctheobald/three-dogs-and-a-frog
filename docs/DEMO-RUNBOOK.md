@@ -88,36 +88,13 @@ Edit `data/products.json` and deploy. `stock_qty` drives everything: `0` -> Out 
 ## 6. Demo-day pre-flight (~5 min before)
 
 ### 6.1 Warm-up (fills the dashboard's live 60-min window)
-Populates Identify (bot lane), Govern (Blocked), and the agent surface. Writes to a file and runs via `bash`, so the `#` comments never hit interactive zsh:
+Run the pre-flight skill's warm-up. It fills the Identify bot lane, exercises `/api/agent` governance (the "Blocked" line), spot-checks the agent surface, and stays under the 100 rps limiter:
 
 ```bash
-ROOT="$HOME/Documents/three-dogs-and-a-frog"
-cat > "$ROOT/infra/tmp/warmup.sh" <<'WARM'
-#!/usr/bin/env bash
-set -uo pipefail
-SITE="https://www.3dogsandafrog.com"; KEY="sk-frog-demo-2026"; PACE=0.15
-ai=("GPTBot/1.0 (+https://openai.com/gptbot)" "ClaudeBot/1.0" "Bytespider" "meta-externalagent/1.1" "PerplexityBot/1.0")
-generic=("python-requests/2.31.0" "curl/8.4.0" "Scrapy/2.11")
-pool=("${ai[@]}" "${ai[@]}" "${ai[@]}" "${generic[@]}")
-paths=("/" "/shop" "/cart")
-echo "general bot traffic (Identify + warn-mode governance)"
-for r in $(seq 1 6); do for p in "${paths[@]}"; do
-  ua="${pool[RANDOM % ${#pool[@]}]}"
-  curl -s -o /dev/null -w "  ${p} -> %{http_code}\n" -A "$ua" "${SITE}${p}"; sleep "$PACE"
-done; done
-echo "/api/agent bot hits (governed -> Blocked when enforce=true)"
-for r in $(seq 1 6); do
-  ua="${ai[RANDOM % ${#ai[@]}]}"
-  curl -s -o /dev/null -w "  /api/agent -> %{http_code}\n" -A "$ua" -X POST "${SITE}/api/agent" -H "Content-Type: application/json" -d '{"message":"hi"}'; sleep "$PACE"
-done
-echo "agent surface spot-check"
-curl -s -o /dev/null -w "  /catalog (key) -> %{http_code}\n" -H "X-Frog-Agent-Key: ${KEY}" "${SITE}/catalog"
-echo "done — wait ~60s, then Refresh data in Looker."
-WARM
-bash "$ROOT/infra/tmp/warmup.sh"
+bash .claude/skills/agentops-preflight/scripts/warmup.sh
 ```
 
-Pace/volume stay far under the 100 rps limiter. Do **not** run on a schedule — it injects synthetic traffic and would pollute the real picture.
+For a verified go/no-go readout instead, run `bash .claude/skills/agentops-preflight/scripts/preflight.sh`. In Cowork / Claude Code you can also just invoke the **`agentops-preflight`** skill. Do **not** run it on a schedule — it injects synthetic traffic that would pollute the real classification picture.
 
 ### 6.2 Manual steps a script can't do
 - **Humans lane:** only a real browser produces `human` classifications — click around the storefront on a laptop/phone, and chat with the Wise Frog (including "buy the backpack") to seed human + agent-sale rows.
