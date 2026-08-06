@@ -183,7 +183,9 @@ app.post('/api/agent', async (req, res) => {
         // We now use the persistent 'chat' object, so it remembers everything!
         let response = await chat.sendMessage({ message: userMessage });
 
-        if (response.functionCalls && response.functionCalls.length > 0) {
+        let fcGuard = 0;
+        while (response.functionCalls && response.functionCalls.length > 0 && fcGuard < 5) {
+            fcGuard++;
             const call = response.functionCalls[0];
             
             if (call.name === 'check_inventory') {
