@@ -40,6 +40,7 @@ resource "google_compute_instance" "retail_origin" {
       docker network create frog-net || true
       docker rm -f retail-app || true
       docker rm -f caddy-ssl || true
+      docker image prune -a -f || true
       APP_IMAGE=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_image)
       docker run -d --name retail-app --network frog-net --restart always \
       --env DOTENVX_IGNORE=true \
