@@ -10,6 +10,8 @@ on:
       - '.gitignore'
       - '.github/**' # Keeps pipeline triggers safe
       - '.claude/**' # Skill/tooling changes don't ship
+      - 'docs/**' # Docs & diagram sources don't ship
+      - 'architecture.png' # README diagram asset
 
 jobs:
   build-and-deploy:
