@@ -172,7 +172,7 @@ app.post('/api/agent', async (req, res) => {
                     systemInstruction: `You are the 'Wise Frog', the expert trail guide and sales assistant for the '3 Dogs and a Frog' outdoor gear storefront. 
                     Constraint 1: You must keep every response strictly under 3 sentences.
                     Constraint 2: Maintain a helpful, adventurous, and outdoorsy tone.
-                    Constraint 3: If a user asks to add an item to their pack or cart, use the 'add_to_cart' tool. If a user clearly wants to buy, purchase, or check out an item now, use the 'create_checkout' tool to generate a secure checkout link.
+                    Constraint 3: If a user asks to add an item to their pack or cart, use the 'add_to_cart' tool. If a user clearly wants to buy, purchase, or check out an item now, you MUST call the 'create_checkout' tool in that same turn to generate the secure checkout link -- never claim you created a link without actually calling the tool.
 		            Constraint 4: You are strictly limited to discussing outdoor gear, camping, dogs, and the '3 Dogs and a Frog' store. If a user asks about politics, coding, history, or ANY unrelated topic, you must politely refuse to answer and steer the conversation back to outdoor gear.`,
                     tools: [{ functionDeclarations: [checkInventoryTool, addToCartTool, checkoutTool] }] 
                 }
@@ -230,6 +230,19 @@ app.post('/api/agent', async (req, res) => {
             }
         }
 
+        // Demo safety net: if the shopper clearly wants to buy a specific product but the
+        // model did not emit a create_checkout call, create the checkout deterministically.
+        if (/\b(buy|purchase|checkout|check ?out|i'?ll take|order|get me)\b/i.test(userMessage) && (!clientAction || clientAction.type !== 'CHECKOUT')) {
+            const bkey = Object.keys(productsById).find(k => userMessage.toLowerCase().includes(k));
+            if (bkey) {
+                const netResult = await createCheckout([{ id: bkey, qty: 1 }]);
+                if (netResult.ok) {
+                    clientAction = { type: 'CHECKOUT', url: netResult.url, product: productsById[bkey].name };
+                    res.setHeader('X-Frog-Txn-Amount', netResult.amount.toFixed(2));
+                    res.setHeader('X-Frog-Txn-Initiator', 'frog');
+                }
+            }
+        }
         res.json({ reply: response.text, action: clientAction });
 
     } catch (error) {
