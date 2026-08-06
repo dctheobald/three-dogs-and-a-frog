@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     saveCartState(); updateCartUI();
                 }
                 if (data.action && data.action.type === 'CHECKOUT' && data.action.url) {
-                    const linkHtml = `<a href="${data.action.url}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;background:#059669;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:700;">🐸 Complete secure checkout →</a>`;
+                    const linkHtml = `<a href="${data.action.url}" style="display:inline-block;margin-top:6px;background:#059669;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:700;">🐸 Complete secure checkout →</a>`;
                     appendMessageBubble(chatMessagesContainer, 'frog', linkHtml, false);
                     chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
                 }
