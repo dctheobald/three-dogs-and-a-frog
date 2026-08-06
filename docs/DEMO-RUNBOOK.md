@@ -91,10 +91,10 @@ Edit `data/products.json` and deploy. `stock_qty` drives everything: `0` -> Out 
 Run the pre-flight skill's warm-up. It fills the Identify bot lane, exercises `/api/agent` governance (the "Blocked" line), spot-checks the agent surface, and stays under the 100 rps limiter:
 
 ```bash
-bash .claude/skills/agentops-preflight/scripts/warmup.sh
+bash .claude/skills/agentops-preflight/scripts/preflight.sh
 ```
 
-For a verified go/no-go readout instead, run `bash .claude/skills/agentops-preflight/scripts/preflight.sh`. In Cowork / Claude Code you can also just invoke the **`agentops-preflight`** skill. Do **not** run it on a schedule — it injects synthetic traffic that would pollute the real classification picture.
+In Cowork / Claude Code you can also just invoke the **`agentops-preflight`** skill. Do **not** run it on a schedule — it injects synthetic traffic that would pollute the real classification picture.
 
 ### 6.2 Manual steps a script can't do
 - **Humans lane:** only a real browser produces `human` classifications — click around the storefront on a laptop/phone, and chat with the Wise Frog (including "buy the backpack") to seed human + agent-sale rows.

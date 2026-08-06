@@ -17,28 +17,20 @@ Prepares the **3D&aF: AgentOps — Edge Traffic Classification** Looker Studio d
 
 ## Steps
 
-1. Run the warm-up. From the repo root (Claude Code's default working directory), invoke it by its full path so the reference resolves regardless of cwd; from inside the skill's own directory it is simply `scripts/warmup.sh`:
-   ```bash
-   bash .claude/skills/agentops-preflight/scripts/warmup.sh
-   ```
-   ~105 requests (7 user-agents × 3 paths × 5 rounds) paced over ~1 minute, well under the site's 100 rps edge rate limiter. The script preflights the edge and aborts loudly if requests are not actually reaching Fastly — trust its exit status, not a "complete" line.
+1. Run the one-command orchestrator (warm-up + `/api/agent` governance + `/catalog` gate check + BigQuery verification + a GO / NO-GO readout):
+```bash
+   bash .claude/skills/agentops-preflight/scripts/preflight.sh
+```
+   Trust the verdict and exit code (0 = GO, 10 = CHECK, 20 = NO-GO) — it reports failures in the readout instead of pretending success. `preflight.sh warm` skips verification; `preflight.sh verify` re-checks after browsing; `DRY_RUN=1` runs against mocks.
 
 2. Then tell the user, plainly:
-   - "Set the report's date & time picker to the last 60 minutes"
-   - "Browse the live storefront on your laptop and phone for a minute — that's the only way to move the Humans lane."
-   - "Wait ~60 seconds for the Fastly log flush plus BigQuery streaming lag, then hit **Refresh data** in Looker Studio."
-
-3. Optional sanity check (if the user has `bq` and wants to confirm data landed):
-   ```bash
-   bq query --use_legacy_sql=false \
-   'SELECT class, COUNT(*) n FROM `three-dogs-frog-store.agentops.edge_requests`
-    WHERE timestamp > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
-    GROUP BY class ORDER BY n DESC'
-   ```
+   - "Set the report's date & time picker to the last 60 minutes."
+   - "Browse the live storefront on your laptop and phone, and chat with the Wise Frog (try 'buy the backpack') — the only way to move the Humans and agent-sale lanes."
+   - "Wait ~60 seconds for the Fastly log flush plus BigQuery streaming, then hit **Refresh data** in Looker Studio."
 
 ## Important
 
 Do **not** run this on a persistent or recurring schedule. It injects synthetic traffic; running it always-on would pollute the real classification picture that the dashboard is meant to show. It is an on-demand, pre-demo action only.
 
 ## Target
-Site `https://www.3dogsandafrog.com` (paths `/`, `/shop`, `/cart`) → Fastly service `wBCY7mB7jg6n24pJqN5q40` → BigQuery `three-dogs-frog-store.agentops.edge_requests`.
+Site `https://www.3dogsandafrog.com` (paths `/`, `/shop`, `/cart`, `/api/agent`, `/catalog`) → Fastly service `wBCY7mB7jg6n24pJqN5q40` → BigQuery `three-dogs-frog-store.agentops` (`edge_requests`, `agent_commerce`).
