@@ -230,7 +230,7 @@ app.post('/create-checkout-session', async (req, res) => {
 app.post('/mcp', async (req, res) => {
   const server = buildMcpServer();
   try {
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on('close', () => { transport.close(); server.close(); });
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
