@@ -83,7 +83,7 @@ Open your talk in **shadow** if you want to flip to **enforce** live on stage. A
 `frog_config` key `agent_key` (currently `sk-frog-demo-2026`). A request presenting `X-Frog-Agent-Key: <that value>` is treated as a verified agent for `/catalog` and `/mcp`. Rotate anytime via the same `dictionary-entry update`.
 
 ### 5.3 Product catalog
-Edit `data/products.json` and deploy. `stock_qty` drives everything: `0` -> Out of Stock (checkout refused), `1–5` -> Low Stock, `>5` -> In Stock.
+Edit `data/products.json` and deploy. `stock_qty` drives everything: `0` -> Out of Stock (checkout refused), `1–5` -> Low Stock, `>5` -> In Stock. Every purchase path (human cart, Wise Frog, MCP) validates stock, so out-of-stock/over-quantity orders are refused (409) and the storefront shows a disabled "Sold Out" button.
 
 ## 6. Demo-day pre-flight (~5 min before)
 
@@ -131,12 +131,12 @@ bq show --schema three-dogs-frog-store:agentops.edge_requests
 ## 10. Gotchas & lessons (things that bit us)
 
 - **Fastly logs unset headers as the literal string `(null)`** — Looker SQL must `NULLIF(x,'(null)')`, not just `IS NULL`.
-- **zsh:** never paste `#`-comment lines (no `interactive_comments`) and always brace variables in table refs (`${PROJ}:agentops` — bare `$PROJ:a` triggers the `:a` path modifier). Prefer writing scripts to a file and running with `bash`.
+- **zsh:** never paste `#`-comment lines (no `interactive_comments`) and always brace variables in table refs (`${PROJ}:agentops` — bare `$PROJ:a` triggers the `:a` path modifier). Also avoid `!` in pasted commands (zsh history expansion — `event not found`); single-quote grep patterns. Prefer writing scripts to a file and running with `bash`.
 - **Node 20+** required — the MCP SDK needs `globalThis.crypto`, absent in Node 18 (and 18 is EOL).
 - **MCP behind a CDN:** construct the transport with `enableJsonResponse: true` — the default SSE stream holds the connection open and trips Fastly's backend timeout (503).
 - **Gemini 3.6 Flash** lives on the Vertex **global** endpoint (regional = 404); needs `@google/genai` >= 2.15; and it chains tool calls, so the `/api/agent` handler must **loop** over function calls until the model returns text (a single round returns empty replies).
 - **Dockerfile** must `COPY data/ ./data/` or the app crash-loops on the missing `products.json` (502).
-- **Stripe** `/create-checkout-session` builds its success/cancel URLs from the `Origin` header — fine from the browser; a raw curl without `Origin` 500s.
+- **Stripe** checkout builds its success/cancel URLs from `SITE_BASE`, so it works for the browser, curl, and agents alike (no `Origin`-header dependency).
 - **Dictionary flips** (enforce) take ~1–2 min to propagate — don't test the toggle 10 seconds after flipping.
 - **`/api/agent` for a bot** is blocked at the edge (429) before it reaches origin — so bot governance costs nothing at the AI tier.
 

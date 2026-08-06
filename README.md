@@ -15,7 +15,7 @@
 > [!IMPORTANT]
 > **DEMO SITE DISCLAIMER:** This is a technical demonstration project. It is **not** a real retail shop. No products are for sale, and no financial transactions are processed.
 
-A full-stack e-commerce demonstration for a luxury outdoor dog-gear brand, fronted by the **Fastly** edge. Beyond the storefront, it is a live testbed for **edge-native traffic intelligence**: every request is classified (human / bot / verified-agent) at the edge, governed by rate limiting, and streamed to BigQuery for real-time observability.
+A full-stack e-commerce demonstration for a luxury outdoor dog-gear brand, fronted by the **Fastly** edge. Beyond the storefront, it is a live testbed for **edge-native traffic intelligence**: every request is classified (human / bot / verified-agent) at the edge, governed by rate limiting, and streamed to BigQuery for real-time observability. Agents can also **transact directly** through an edge-served catalog and a real MCP checkout, governed and monetized at the edge.
 
 **🌐 Live Demo:** [https://www.3dogsandafrog.com](https://www.3dogsandafrog.com)
 **📊 Edge Observability (Looker):** *see the "Edge Traffic Classification" dashboard linked in the site footer.*
@@ -42,8 +42,22 @@ The edge is not just a CDN here — it is the **classification and control plane
 
 * **Bot Management + ContentGuard:** Every request is classified at the edge. `infra/vcl/frog-classify.vcl` stamps `X-Frog-Class` — one of `human`, `bot`, `verified-agent`, or `edge-served` (plus `redirect` for collapsed hops). ContentGuard is enabled declaratively (`product_enablement.bot_management.contentguard = "on"`).
 * **Edge Rate Limiting:** `three-dogs-rate-limiter` (~100 rps) shields the `e2-micro` origin from automated floods.
-* **AgentOps Telemetry:** Every request is streamed to BigQuery (`agentops.edge_requests`) via the `agentops-bq` logging endpoint, authenticated by **keyless impersonation** of the `fastly-logging` service account (no stored keys). This powers the Looker Studio **"Edge Traffic Classification"** dashboard (traffic mix, % automated, top automated clients, traffic-over-time).
-* **Wise Frog Assistant:** An in-store AI assistant backed by `@google/genai` (Gemini).
+* **AgentOps Telemetry:** Every request is streamed to BigQuery (`agentops.edge_requests`) via the `agentops-bq` logging endpoint, authenticated by **keyless impersonation** of the `fastly-logging` service account (no stored keys). This powers the Looker Studio **"Edge Traffic Classification"** dashboard (traffic mix, % automated, top automated clients, traffic-over-time). A second data set, `agentops.agent_commerce`, drives the **Monetize** row — checkouts and revenue split human vs agent.
+* **Wise Frog Assistant:** An in-store AI assistant on **Gemini 3.6** (Vertex AI) — checks inventory, adds to cart, and completes secure Stripe checkouts; the `/api/agent` endpoint is governed at the edge (see Agentic Commerce below).
+
+---
+
+## 🛒 Agentic Commerce & Monetization
+
+Beyond serving humans, the storefront is built for **agents to transact** — and the edge governs that surface.
+
+* **Edge-served catalog (`/catalog`):** the product catalog is served **entirely from the Fastly edge** (an Edge Dictionary populated from `data/products.json` at deploy) — a structured JSON API for agents with no origin hop. Gated to verified agents.
+* **MCP endpoint (`/mcp`):** a real Model Context Protocol server (`@modelcontextprotocol/sdk`, JSON response mode) exposing `list_products`, `get_product`, and `checkout` tools to any MCP-capable agent.
+* **Verified-agent gate:** `/catalog` and `/mcp` require either a Fastly-classified `verified-agent` **or** the demo header `X-Frog-Agent-Key` (held in the `frog_config` edge dictionary) — otherwise `403`.
+* **Agent-surface governance (`/api/agent`):** the Wise Frog endpoint is governed at the edge — humans and verified agents allowed (graduated rate ceilings), untrusted bots gated. A `frog_config` key flips **shadow** (identify only) ↔ **enforce** (block) with no deploy.
+* **Checkout + stock safety:** the Wise Frog and the MCP `checkout` tool both create Stripe **test-mode** sessions. Every purchase path validates stock, so **out-of-stock or over-quantity orders are refused** and the storefront shows a disabled "Sold Out".
+* **Single source of truth:** `data/products.json` drives the storefront, the Wise Frog, the MCP tools, and the edge catalog — edit once, everything moves.
+* **Monetize telemetry:** each checkout stamps `X-Frog-Txn-Amount` / `X-Frog-Txn-Initiator` response headers that the edge logs to BigQuery (`agentops.agent_commerce`), powering the dashboard's **human-vs-agent revenue** split.
 
 ---
 
