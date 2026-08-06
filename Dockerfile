@@ -19,6 +19,9 @@ COPY views/ ./views/
 # Copy static assets (Images, CSS, JS)
 COPY public/ ./public/
 
+# Copy the product catalog (single source of truth)
+COPY data/ ./data/
+
 # Expose the application port
 EXPOSE 3000
 
