@@ -195,7 +195,9 @@ app.post('/api/agent', async (req, res) => {
             else if (call.name === 'add_to_cart') {
                 const secureProductData = checkInventoryLocally(call.args.product_name);
                 
-                if (secureProductData.status !== "Not Found") {
+                if (secureProductData.status === "Out of Stock") {
+                    response = await chat.sendMessage({ message: [{ functionResponse: { name: 'add_to_cart', response: { status: "Out of stock; do not add. Tell the customer this item is currently unavailable." } } }] });
+                } else if (secureProductData.status !== "Not Found") {
                     console.log(`🛒 [Action] Securely routing ${secureProductData.name} to frontend cart.`);
                     
                     clientAction = {
@@ -265,15 +267,22 @@ app.get('/observability', (req, res) => res.render('observability', { title: 'Ed
 app.post('/create-checkout-session', async (req, res) => {
     try {
         const { cart } = req.body;
-        const lineItems = cart.map(item => ({
-            price_data: { currency: 'usd', product_data: { name: item.name }, unit_amount: Math.round(item.price * 100) },
-            quantity: item.quantity,
-        }));
+        const byName = Object.fromEntries(products.map(p => [p.name.toLowerCase(), p]));
+        const problems = [], lineItems = []; let txnAmount = 0;
+        for (const item of (cart || [])) {
+            const prod = byName[(item.name || '').toLowerCase()] || productsById[item.id];
+            const qty = item.quantity || 1;
+            if (!prod) { problems.push('Unknown item: ' + (item.name || item.id)); continue; }
+            if (prod.stock_qty <= 0) { problems.push(prod.name + ' is out of stock'); continue; }
+            if (qty > prod.stock_qty) { problems.push('Only ' + prod.stock_qty + ' of ' + prod.name + ' available'); continue; }
+            lineItems.push({ price_data: { currency: 'usd', product_data: { name: prod.name }, unit_amount: Math.round(prod.price * 100) }, quantity: qty });
+            txnAmount += prod.price * qty;
+        }
+        if (problems.length) return res.status(409).json({ error: problems.join('; ') });
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'], mode: 'payment', line_items: lineItems,
-            success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${req.headers.origin}/cart`,
+            success_url: SITE_BASE + '/success?session_id={CHECKOUT_SESSION_ID}', cancel_url: SITE_BASE + '/cart',
         });
-        const txnAmount = (cart || []).reduce((s, i) => s + (parseFloat(i.price) || 0) * (i.quantity || 1), 0);
         res.setHeader('X-Frog-Txn-Amount', txnAmount.toFixed(2));
         res.setHeader('X-Frog-Txn-Initiator', 'human');
         res.json({ url: session.url });
