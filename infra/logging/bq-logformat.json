@@ -10,5 +10,7 @@
   "cache_state": "%{fastly_info.state}V",
   "client_region": "%{client.geo.region}V",
   "client_country": "%{client.geo.country_code}V",
-  "client_key": "%{req.http.X-Frog-Client}V"
+  "client_key": "%{req.http.X-Frog-Client}V",
+  "txn_amount": "%{resp.http.X-Frog-Txn-Amount}V",
+  "txn_initiator": "%{resp.http.X-Frog-Txn-Initiator}V"
 }
