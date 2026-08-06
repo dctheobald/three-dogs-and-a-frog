@@ -19,7 +19,24 @@ const SITE_BASE = 'https://www.3dogsandafrog.com';
 function toAgentView(p) {
   return { id: p.id, name: p.name, price: p.price, currency: p.currency, in_stock: p.stock_qty > 0, stock_qty: p.stock_qty, image: SITE_BASE + p.image };
 }
-function buildMcpServer() {
+async function createCheckout(items) {
+  const problems = [], lineItems = []; let amount = 0;
+  for (const it of items) {
+    const prod = productsById[it.id];
+    if (!prod) { problems.push('unknown product: ' + it.id); continue; }
+    if (prod.stock_qty <= 0) { problems.push(prod.name + ' is out of stock'); continue; }
+    if (it.qty > prod.stock_qty) { problems.push('only ' + prod.stock_qty + ' of ' + prod.name + ' in stock (requested ' + it.qty + ')'); continue; }
+    lineItems.push({ price_data: { currency: 'usd', product_data: { name: prod.name }, unit_amount: Math.round(prod.price * 100) }, quantity: it.qty });
+    amount += prod.price * it.qty;
+  }
+  if (problems.length) return { ok: false, problems };
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'], mode: 'payment', line_items: lineItems,
+    success_url: SITE_BASE + '/success?session_id={CHECKOUT_SESSION_ID}', cancel_url: SITE_BASE + '/cart'
+  });
+  return { ok: true, url: session.url, session_id: session.id, amount };
+}
+function buildMcpServer(res) {
   const server = new McpServer({ name: 'three-dogs-frog-agentic-commerce', version: '1.0.0' });
   server.registerTool('list_products',
     { description: 'List every product in the 3 Dogs & a Frog catalog with price and live availability.' },
@@ -36,20 +53,10 @@ function buildMcpServer() {
   server.registerTool('checkout',
     { description: 'Create a checkout session for one or more items. Validates stock and returns a Stripe checkout URL (test mode).', inputSchema: { items: z.array(z.object({ id: z.string(), qty: z.number().int().positive() })).describe('Line items to purchase') } },
     async ({ items }) => {
-      const problems = [], lineItems = [];
-      for (const it of items) {
-        const prod = productsById[it.id];
-        if (!prod) { problems.push('unknown product: ' + it.id); continue; }
-        if (prod.stock_qty <= 0) { problems.push(prod.name + ' is out of stock'); continue; }
-        if (it.qty > prod.stock_qty) { problems.push('only ' + prod.stock_qty + ' of ' + prod.name + ' in stock (requested ' + it.qty + ')'); continue; }
-        lineItems.push({ price_data: { currency: 'usd', product_data: { name: prod.name }, unit_amount: Math.round(prod.price * 100) }, quantity: it.qty });
-      }
-      if (problems.length) return { isError: true, content: [{ type: 'text', text: JSON.stringify({ status: 'rejected', problems }) }] };
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'], mode: 'payment', line_items: lineItems,
-        success_url: SITE_BASE + '/success?session_id={CHECKOUT_SESSION_ID}', cancel_url: SITE_BASE + '/cart'
-      });
-      return { content: [{ type: 'text', text: JSON.stringify({ status: 'ok', checkout_url: session.url, session_id: session.id }) }] };
+      const result = await createCheckout(items);
+      if (!result.ok) return { isError: true, content: [{ type: 'text', text: JSON.stringify({ status: 'rejected', problems: result.problems }) }] };
+      if (res) { res.setHeader('X-Frog-Txn-Amount', result.amount.toFixed(2)); res.setHeader('X-Frog-Txn-Initiator', 'mcp'); }
+      return { content: [{ type: 'text', text: JSON.stringify({ status: 'ok', checkout_url: result.url, session_id: result.session_id }) }] };
     }
   );
   return server;
@@ -122,6 +129,17 @@ const addToCartTool = {
     }
 };
 
+// 2b. Checkout Tool (agentic commerce)
+const checkoutTool = {
+    name: 'create_checkout',
+    description: 'Create a secure Stripe checkout link when the customer clearly wants to BUY or purchase a specific product now.',
+    parameters: {
+        type: 'object',
+        properties: { product_name: { type: 'string', description: 'The product to buy (e.g., backpack, bowl, harness)' } },
+        required: ['product_name']
+    }
+};
+
 // 3. Local Mock Database Function
 function checkInventoryLocally(productName) {
     console.log(`🧠 [Database] Looking up secure data for: ${productName}`);
@@ -154,9 +172,9 @@ app.post('/api/agent', async (req, res) => {
                     systemInstruction: `You are the 'Wise Frog', the expert trail guide and sales assistant for the '3 Dogs and a Frog' outdoor gear storefront. 
                     Constraint 1: You must keep every response strictly under 3 sentences.
                     Constraint 2: Maintain a helpful, adventurous, and outdoorsy tone.
-                    Constraint 3: If a user asks to buy an item or add it to their pack, you MUST use the 'add_to_cart' tool to do it for them.
+                    Constraint 3: If a user asks to add an item to their pack or cart, use the 'add_to_cart' tool. If a user clearly wants to buy, purchase, or check out an item now, use the 'create_checkout' tool to generate a secure checkout link.
 		            Constraint 4: You are strictly limited to discussing outdoor gear, camping, dogs, and the '3 Dogs and a Frog' store. If a user asks about politics, coding, history, or ANY unrelated topic, you must politely refuse to answer and steer the conversation back to outdoor gear.`,
-                    tools: [{ functionDeclarations: [checkInventoryTool, addToCartTool] }] 
+                    tools: [{ functionDeclarations: [checkInventoryTool, addToCartTool, checkoutTool] }] 
                 }
             });
             activeChats.set(sessionId, chat);
@@ -193,6 +211,23 @@ app.post('/api/agent', async (req, res) => {
                     response = await chat.sendMessage({ message: [{ functionResponse: { name: 'add_to_cart', response: { status: "Failed, item not found" } } }] });
                 }
             }
+            else if (call.name === 'create_checkout') {
+                const ckey = Object.keys(productsById).find(k => call.args.product_name.toLowerCase().includes(k));
+                const prod = ckey ? productsById[ckey] : null;
+                if (!prod) {
+                    response = await chat.sendMessage({ message: [{ functionResponse: { name: 'create_checkout', response: { status: "item not found" } } }] });
+                } else {
+                    const result = await createCheckout([{ id: prod.id, qty: 1 }]);
+                    if (result.ok) {
+                        clientAction = { type: 'CHECKOUT', url: result.url, product: prod.name };
+                        res.setHeader('X-Frog-Txn-Amount', result.amount.toFixed(2));
+                        res.setHeader('X-Frog-Txn-Initiator', 'frog');
+                        response = await chat.sendMessage({ message: [{ functionResponse: { name: 'create_checkout', response: { status: "checkout ready; tell the customer to tap the secure checkout button below" } } }] });
+                    } else {
+                        response = await chat.sendMessage({ message: [{ functionResponse: { name: 'create_checkout', response: { status: "rejected", problems: result.problems } } }] });
+                    }
+                }
+            }
         }
 
         res.json({ reply: response.text, action: clientAction });
@@ -223,12 +258,15 @@ app.post('/create-checkout-session', async (req, res) => {
             payment_method_types: ['card'], mode: 'payment', line_items: lineItems,
             success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${req.headers.origin}/cart`,
         });
+        const txnAmount = (cart || []).reduce((s, i) => s + (parseFloat(i.price) || 0) * (i.quantity || 1), 0);
+        res.setHeader('X-Frog-Txn-Amount', txnAmount.toFixed(2));
+        res.setHeader('X-Frog-Txn-Initiator', 'human');
         res.json({ url: session.url });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/mcp', async (req, res) => {
-  const server = buildMcpServer();
+  const server = buildMcpServer(res);
   try {
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on('close', () => { transport.close(); server.close(); });
