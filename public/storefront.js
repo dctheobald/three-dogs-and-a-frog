@@ -137,7 +137,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const session = await response.json();
                 if (session.url) {
                     window.location.href = session.url;
-                } else throw new Error("No URL returned");
+                } else {
+                    alert(session.error ? ("Ribbit — " + session.error) : "Ribbit. Could not complete checkout.");
+                    checkoutBtn.disabled = false;
+                    checkoutBtn.textContent = "Proceed to Checkout";
+                    return;
+                }
             } catch (error) {
                 alert("Ribbit. Could not connect to Stripe.");
                 checkoutBtn.disabled = false;
