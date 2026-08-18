@@ -1,0 +1,65 @@
+name: CI — plan & build (no deploy)
+
+# Non-deploying pre-merge check. Verifies the image builds and shows the
+# Terraform diff, with NO apply / push / VM reset / purge. Runs on PRs into
+# main (and on manual dispatch). Deploys still happen only on push to main via
+# deploy.yml. Action versions and the Terraform env mirror deploy.yml.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.claude/**'
+      - 'docs/**'
+      - 'tools/**'
+      - 'architecture.png'
+      # .github/** intentionally NOT ignored, so a PR editing a workflow
+      # (including this one) still runs the check and self-tests.
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  docker-build:
+    name: Docker build (no push)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build image (build only — never pushed)
+        run: docker build --platform linux/amd64 -t retail-app-image:ci .
+
+  terraform-plan:
+    name: Terraform plan (no apply)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      # Mirrors deploy.yml's Terraform Apply env (the purge token is apply-only,
+      # so it's omitted here).
+      - name: terraform init & plan
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+          TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_app_image: "us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/retail-repo/retail-app-image"
+          FASTLY_API_KEY: ${{ secrets.FASTLY_API_KEY }}
+          FASTLY_SERVICE_ID: ${{ secrets.FASTLY_SERVICE_ID }}
+        run: |
+          cd infra
+          terraform init -input=false
+          terraform plan -input=false -no-color -lock-timeout=120s
