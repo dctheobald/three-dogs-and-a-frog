@@ -1,7 +1,7 @@
 # 3 Dogs & a Frog — AgentOps Demo Runbook
 
 *Operational runbook for the "Performance to Profit" edge + agentic-commerce demo.*
-*Site: https://www.3dogsandafrog.com · Last updated: 2026-08-06*
+*Site: https://www.3dogsandafrog.com · Last updated: 2026-08-17*
 
 ---
 
@@ -102,20 +102,27 @@ Configured in the **Fastly control panel → Tools → AI Runtime Control** (sup
 
 ## 6. Demo-day pre-flight (~5 min before)
 
+> For the full slide-keyed sequence (prep → on-stage governance flip → reset), see the **demo-day run-sheet** (`docs/demo-day-run-sheet.md`). The steps below are the reference; the run-sheet is what you drive from.
+
 ### 6.1 Warm-up (fills the dashboard's live 60-min window)
-Run the pre-flight skill's warm-up. It fills the Identify bot lane, exercises `/api/agent` governance (the "Blocked" line), spot-checks the agent surface, and stays under the 100 rps limiter:
+Run the pre-flight skill's warm-up. It fills the Identify bot lane, exercises `/api/agent` governance, checks the `/catalog` agent surface, seeds the agent-commerce lane via the shopper agent, verifies BigQuery landing, and prints a GO/NO-GO — all under the 100 rps limiter.
+
+**Set governance mode first.** If the talk opens in shadow (slide 31), flip `enforce=false` (§5.1) and warm with `AGENT_REQUESTS=0` so the Blocked lane opens at 0 — otherwise you pre-spend the reveal.
 
 ```bash
-bash .claude/skills/agentops-preflight/scripts/preflight.sh
+bash .claude/skills/3daf-demo-prep/scripts/preflight.sh full
+node tools/shopper-agent.js "buy the backpack"
 ```
 
-In Cowork / Claude Code you can also just invoke the **`agentops-preflight`** skill. Do **not** run it on a schedule — it injects synthetic traffic that would pollute the real classification picture.
+In Cowork / Claude Code you can also just invoke the **`3daf-demo-prep`** skill — it prompts for shadow vs enforce and walks the manual steps in order. Do **not** run it on a schedule — it injects synthetic traffic that would pollute the real classification picture.
 
-### 6.2 Manual steps a script can't do
-- **Humans lane:** only a real browser produces `human` classifications — click around the storefront on a laptop/phone, and chat with the Wise Frog (including "buy the backpack") to seed human + agent-sale rows.
-- **Looker window:** set the report's date & time picker to **Last 60 minutes**, wait ~60s for the log flush + BigQuery streaming, then hit **Refresh data**.
-- **ARC lane:** the Wise Frog chats above also populate the ARC dashboard — check **Tools → AI Runtime Control → Logging** for requests on `arc-wisefrog-virtual-key` if you want to show the AI-governance view live.
-- **Agent lane (Trusted Agents + agent sale):** run the reference agent once from the repo root — `node tools/shopper-agent.js "buy the backpack"` — to seed the **Trusted Agents** classification lane, an **Agent – MCP client** sale in Monetize, and an `arc-shopper-agent` lane in ARC Logging. Needs `ARC_SHOPPER_KEY` (in the root `.envrc`). This one *can* be scripted (unlike the human lane) if you later fold it into `preflight.sh`.
+### 6.2 Manual steps a script can't do (in order)
+- **Humans lane:** only a real browser produces `human` classifications — click around the storefront on a laptop/phone.
+- **Human sale:** complete **one checkout through the browser cart** (Stripe test card `4242 4242 4242 4242`, any future expiry/CVC). This seeds **Human Sales** — without it, "buy the backpack" via the Wise Frog logs as an *agent* sale and Human Sales stays $0.
+- **Agent sale (Wise Frog):** chat with the Wise Frog ("buy the backpack") to seed an **Agent – Wise Frog** sale and "Allowed: human" in Govern. This also populates the ARC dashboard — check **Tools → AI Runtime Control → Logging** on `arc-wisefrog-virtual-key`.
+- **Looker window:** set the page time control to **Last 60 minutes**, wait ~60s for the log flush + BigQuery streaming, then hit **Refresh data**.
+
+> The **Trusted Agents + Agent–MCP sale** lane is seeded by the shopper agent in §6.1 (which the `3daf-demo-prep` skill runs as part of full prep), so it's already covered — not a manual step. Needs `ARC_SHOPPER_KEY` in the root `.envrc`.
 
 ## 7. Deploy & rollback
 
@@ -158,7 +165,7 @@ Confirm the container is on the ARC path: `gcloud compute ssh three-dog-one-frog
 - **Wise Frog runs through Fastly ARC**, not the model provider directly — OpenAI SDK pointed at `arc.fastly.app/v1`, model `gemini/gemini-3.5-flash`, authed with the ARC **virtual key** (the raw Gemini key lives only in ARC's provider config). ARC beta is **static-key only** (ADC / Passthrough SSO is a GA feature), and per-key **budget/rate limits are GA too** — so today the cost ceiling is the Gemini Developer API **prepay** balance plus the edge blocking bots before they reach the model. `gemini-3.5-flash` is a **reasoning model** and chains tool calls, so the `/api/agent` loop must echo each assistant turn (including `reasoning_details` and `tool_calls`) back into the message history before answering the tool call, or the chain breaks.
 - **Boot disk fills from per-commit image tags.** Each deploy pulls a new `retail-app-image:<sha>` and old ones aren't pruned; after ~20 deploys the disk fills and the next `docker run` dies with `no space left on device` — the container never starts and Caddy 502s. Fixed: the startup-script now runs `docker image prune -a -f` before pulling, so every deploy reclaims space.
 - **Keyed agents must be classified `verified-agent`, not just admitted.** The demo agent key gates `/catalog` + `/mcp` in `frog-agent-recv`, but the *class* is set earlier in `frog-classify`. Originally the key granted access without upgrading the class, so a keyed agent (short/automated UA) logged as an **untrusted bot in warn mode** and "Trusted Agents" stayed 0. Fix: `frog-classify.vcl` sets `X-Frog-Class = "verified-agent"` (and suppresses the bot signal) when the key matches `frog_config.agent_key`.
-- **Looker cross-source time filtering.** Monetize reads a separate BigQuery source (`agent_commerce`); a page filter can't cross data sources, so `agent_commerce` carries its own `Select Time` parameter (`choose_time_window`) + `Within Minute Filter` field, and each Monetize chart is filtered on *its own* `Within Minute Filter` — the edge_requests filter won't reach it. Also `% Automated` = (bots + verified-agents) / all traffic, so the headline reconciles with the donut's two non-human slices.
+- **Looker time filtering (single control).** Both sources — `edge_requests` and `agent_commerce` — are driven by **one page-level date/time control**, unified by matching the control's field name and type across the two data sources. (Earlier builds gave `agent_commerce` its own `Select Time` parameter because a page filter couldn't cross sources; that's no longer needed — the shared control reaches Monetize.) `% Automated` = (bots + verified-agents) / all traffic, so the headline reconciles with the donut's two non-human slices.
 - **Dockerfile** must `COPY data/ ./data/` or the app crash-loops on the missing `products.json` (502).
 - **Stripe** checkout builds its success/cancel URLs from `SITE_BASE`, so it works for the browser, curl, and agents alike (no `Origin`-header dependency).
 - **Dictionary flips** (enforce) take ~1–2 min to propagate — don't test the toggle 10 seconds after flipping.
