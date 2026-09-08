@@ -1,5 +1,18 @@
 {
   "enabledPlugins": {
     "fastly-agent-toolkit@fastly-agent-toolkit": true
+  },
+  "sandbox": {
+    "network": {
+      "allowedDomains": [
+        "www.3dogsandafrog.com",
+        "arc.fastly.app"
+      ]
+    },
+    "filesystem": {
+      "allowRead": [
+        "/etc/ssl/cert.pem"
+      ]
+    }
   }
 }
