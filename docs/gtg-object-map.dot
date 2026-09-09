@@ -1,0 +1,43 @@
+digraph gtg {
+  rankdir=LR; bgcolor="#fbfaf3"; fontname="Helvetica"; nodesep=0.5; ranksep=1.1;
+  labelloc="t";
+  label=<<FONT POINT-SIZE="22"><B>Google Tag Gateway &#8212; Google objects &amp; relationships</B></FONT>>;
+  node [fontname="Helvetica"]; edge [fontname="Helvetica", fontsize=11, color="#555555", fontcolor="#333333"];
+
+  ads [shape=none, margin=0, label=<
+  <TABLE BORDER="2" CELLBORDER="0" CELLSPACING="6" CELLPADDING="9" BGCOLOR="#e8f0fe" COLOR="#4285F4">
+    <TR><TD><B><FONT COLOR="#1a56c4" POINT-SIZE="15">GOOGLE ADS</FONT></B><BR/><FONT POINT-SIZE="10">account: your Google login</FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT POINT-SIZE="12"><B>Google tag</B> &#183; AW-18439127160<BR/>umbrella Google tag GT-MQRZ3G2H</FONT></TD></TR>
+  </TABLE>>];
+
+  subgraph cluster_gtm {
+    label=<<B><FONT COLOR="#1a56c4" POINT-SIZE="15">GOOGLE TAG MANAGER</FONT></B><BR/><FONT POINT-SIZE="10">container GTM-MLHMZRHK &#183; installed on site</FONT>>;
+    labelloc="t"; style="rounded,filled"; fillcolor="#f4f7ff"; color="#4285F4"; margin=18; fontname="Helvetica";
+
+    gtag [shape=box, style="rounded,filled", fillcolor="#e1f5ee", color="#1D9E75", fontcolor="#0F6E56", fontsize=12,
+      label="Google tag (destination)\nfires on all pages\n[ must be firing and detected ]"];
+    gateway [shape=box, style="rounded,filled", fillcolor="#eeedfe", color="#7F77DD", fontcolor="#3C3489", fontsize=12,
+      label="Google tag gateway\npath /3dafmetrics\nauthorizes Fastly (OAuth)"];
+  }
+
+  fastly [shape=none, margin=0, label=<
+  <TABLE BORDER="2" CELLBORDER="0" CELLSPACING="6" CELLPADDING="9" BGCOLOR="#fdeceb" COLOR="#e34948">
+    <TR><TD><B><FONT COLOR="#c0392b" POINT-SIZE="15">FASTLY</FONT></B><BR/><FONT POINT-SIZE="10">superuser &#183; domain added &#183; valid TLS</FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT POINT-SIZE="12"><B>GTG proxy</B> &#183; platform-managed<BR/>serves /3dafmetrics &#8594; fps.goog<BR/><B>not in Terraform</B></FONT></TD></TR>
+  </TABLE>>];
+
+  legend [shape=none, margin=0, label=<
+  <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="4" CELLPADDING="6" BGCOLOR="#f0efe9" COLOR="#b4b2a9">
+    <TR><TD COLSPAN="2"><B><FONT POINT-SIZE="11">ID PREFIXES</FONT></B></TD></TR>
+    <TR><TD><FONT POINT-SIZE="10"><B>GTM-</B></FONT></TD><TD><FONT POINT-SIZE="10">Tag Manager container (holds tags)</FONT></TD></TR>
+    <TR><TD><FONT POINT-SIZE="10"><B>GT-</B></FONT></TD><TD><FONT POINT-SIZE="10">Google tag (umbrella gtag)</FONT></TD></TR>
+    <TR><TD><FONT POINT-SIZE="10"><B>AW-</B></FONT></TD><TD><FONT POINT-SIZE="10">Google Ads tag / conversion id</FONT></TD></TR>
+    <TR><TD><FONT POINT-SIZE="10"><B>G-</B></FONT></TD><TD><FONT POINT-SIZE="10">GA4 measurement id (not used here)</FONT></TD></TR>
+  </TABLE>>];
+
+  ads -> gtag [label="provides tag id", penwidth=2, color="#4285F4", fontcolor="#1a56c4"];
+  gtag -> gateway [label="gateway needs\na firing tag", penwidth=2, color="#1D9E75", fontcolor="#0F6E56"];
+  gateway -> fastly [label="authorize →\nprovisions proxy", penwidth=2, color="#e34948", fontcolor="#c0392b"];
+
+  { rank=sink; legend; }
+}

@@ -7,6 +7,34 @@ runs on our own domain instead of `googletagmanager.com` / `google-analytics.com
 It was enabled through **Google Tag Manager**, and it is **not** managed by this repo's
 Terraform. Read the next section before touching `infra/`.
 
+The diagram below maps the Google objects and the order they must be configured in.
+
+![Google Tag Gateway — Google objects](gtg-object-map.png)
+
+*Regenerate from source: `dot -Tpng docs/gtg-object-map.dot -o docs/gtg-object-map.png` (same toolchain as `architecture.dot`).*
+
+---
+
+## The Google objects & setup order
+
+Each object has to exist before the next — the one that bit us was step 2.
+
+1. **GTM container installed.** `GTM-MLHMZRHK` created and its loader live on the site (in `views/partials/header.ejs`). This is the container that *holds* tags.
+2. **A Google tag firing inside the container.** The `AW-18439127160` tag, firing on all pages. **This is the step that silently blocks everything if skipped** — Google won't finish provisioning the gateway while the container is empty, and it sits "Pending / Incomplete" with no error. Confirm the tag actually fires (Tag Assistant) before moving on.
+3. **Fastly ready.** The domain added, active, with valid TLS, and you're signed in as a **superuser**.
+4. **Enable the Google tag gateway.** Set the measurement path `/3dafmetrics` and authorize Fastly (OAuth). Only then does Fastly's platform stand up the GTG proxy and the path serves first-party.
+
+**The two objects people conflate:** the **Google tag** is the thing that *fires and measures* (referenced by an id like `AW-…`); the **Google tag gateway** is the *setting* that reroutes that tag's traffic first-party. The gateway is useless without a live tag feeding it — that's the whole lesson of step 2.
+
+**ID prefixes** (it's one tag wearing a few id hats):
+
+| Prefix | What it is |
+| --- | --- |
+| `GTM-` | Tag Manager **container** (holds tags) |
+| `GT-`  | **Google tag** (umbrella gtag — Google auto-created `GT-MQRZ3G2H`) |
+| `AW-`  | **Google Ads** tag / conversion id (`AW-18439127160`) |
+| `G-`   | GA4 measurement id (**not used here**) |
+
 ---
 
 ## Current configuration
@@ -70,20 +98,9 @@ bumps; verify anyway before relying on it for a live demo.
 
 ---
 
-## Setup gotcha (discovered during rollout)
-
-The automated flow **silently no-ops until a Google tag is firing *and* detected on the site.**
-Enabling the gateway against an empty GTM container looks stuck ("Pending / Incomplete") with no
-error. Correct sequence:
-
-1. Add and **publish** the Google tag in GTM.
-2. Confirm it's firing (Tag Assistant / DevTools).
-3. *Then* enable / complete the gateway — the edge provisions within ~2 minutes.
-
----
-
 ## References
 
+- Object-map diagram source: `gtg-object-map.dot` (renders to `gtg-object-map.png`).
 - Fastly public docs: *Fastly Ad Tag Gateway* integration guide (fastly.com/documentation).
 - Google setup guide: Tag Manager → Google tag gateway (support.google.com).
 - Internal Fastly runbook: Confluence — *"Fastly Ad Tag Manager (Google Tag Gateway)"*
