@@ -100,6 +100,14 @@ Configured in the **Fastly control panel → Tools → AI Runtime Control** (sup
 - **Watch usage live:** the **Logging** tab is per-request and near-real-time (filter by `arc-wisefrog-virtual-key`); the **Summary** tab is an hourly rollup, so it lags — trust Logging during a demo.
 - **Change model / rotate:** edit the provider or refresh the virtual key in the control panel. A new virtual-key value means updating the `arc-wisefrog-virtual-key` Secret Manager secret and rolling the VM.
 
+### 5.5 Google Tag Gateway — first-party ad-tag measurement
+Enabled on `www.3dogsandafrog.com` (measurement path `/3dafmetrics`): Google tags are served first-party through the Fastly edge via the **Fastly Ad Tag Gateway**. Configured in **Google Tag Manager → Admin → Google tag gateway** (superuser-authorized OAuth), **not** Terraform.
+- **Fastly-platform-managed, out-of-band from `infra/`.** A separate Fastly-managed proxy service carries the `/3dafmetrics` → Google routing; it's attached to the **domain**, not to a service version. `terraform plan` shows **no** gateway config on our service — expected, **not drift** — and `fps.goog` routing must **not** be added to `infra/main.tf` (it would collide with the platform route). A `terraform apply` does **not** strip it.
+- **Verify:** `curl -sI https://www.3dogsandafrog.com/3dafmetrics/healthy` → expect `200` via Fastly. Re-check after any `terraform apply` (expected to survive version bumps; confirm anyway).
+- **Rollback:** opt out in GTM → Admin → Google tag gateway → Configure → Delete. Fails safe — a dropped Fastly↔Google link pauses measurement but the site keeps serving.
+- **Setup gotcha:** enablement silently no-ops until a Google tag is **firing and detected** on the site — publish the tag and confirm it fires (Tag Assistant) *before* enabling the gateway.
+- **Full note & references:** `docs/gtg-dependency.md`. (The internal Fastly integration runbook lives in Confluence — do not copy its internals into this repo.)
+
 ## 6. Demo-day pre-flight (~5 min before)
 
 > For the full slide-keyed sequence (prep → on-stage governance flip → reset), see the **demo-day run-sheet** (`docs/demo-day-run-sheet.md`). The steps below are the reference; the run-sheet is what you drive from.
@@ -170,6 +178,7 @@ Confirm the container is on the ARC path: `gcloud compute ssh three-dog-one-frog
 - **Stripe** checkout builds its success/cancel URLs from `SITE_BASE`, so it works for the browser, curl, and agents alike (no `Origin`-header dependency).
 - **Dictionary flips** (enforce) take ~1–2 min to propagate — don't test the toggle 10 seconds after flipping.
 - **`/api/agent` for a bot** is blocked at the edge (429) before it reaches origin — so bot governance costs nothing at the AI tier.
+- **Google Tag Gateway is invisible to Terraform by design.** First-party ad-tag routing (`/3dafmetrics`) is Fastly-platform-managed, attached to the domain out-of-band from `infra/` — so a clean `terraform plan` is **not** proof it's gone, and a `terraform apply` won't strip it. Enablement also **silently no-ops until a Google tag is firing and detected** on the site: publish and confirm the tag fires before enabling the gateway, then allow ~2 min for the edge to provision. See §5.5 and `docs/gtg-dependency.md`.
 
 ## 11. Troubleshooting
 

@@ -44,6 +44,7 @@ The edge is not just a CDN here — it is the **classification and control plane
 * **Bot Management + ContentGuard:** Every request is classified at the edge. `infra/vcl/frog-classify.vcl` stamps `X-Frog-Class` — one of `human`, `bot`, `verified-agent`, or `edge-served` (plus `redirect` for collapsed hops). ContentGuard is enabled declaratively (`product_enablement.bot_management.contentguard = "on"`).
 * **Edge Rate Limiting:** `three-dogs-rate-limiter` (~100 rps) shields the `e2-micro` origin from automated floods.
 * **AgentOps Telemetry:** Every request is streamed to BigQuery (`agentops.edge_requests`) via the `agentops-bq` logging endpoint, authenticated by **keyless impersonation** of the `fastly-logging` service account (no stored keys). This powers the Looker Studio **"Edge Traffic Classification"** dashboard (traffic mix, % automated, top automated clients, traffic-over-time). A second data set, `agentops.agent_commerce`, drives the **Monetize** row — checkouts and revenue split human vs agent.
+* **First-Party Measurement (Google Tag Gateway):** Google tags (Ads / Analytics) are served **first-party through the Fastly edge** on the measurement path `/3dafmetrics`, recovering conversion and analytics signal that browser privacy controls strip from third-party domains. Unlike the rest of the edge config this is **Fastly-platform-managed, not Terraform** (see the Infrastructure callout); verify with `curl -sI https://www.3dogsandafrog.com/3dafmetrics/healthy`. Full note: [`docs/gtg-dependency.md`](docs/gtg-dependency.md).
 * **AI Runtime Control (ARC):** The Wise Frog's LLM calls don't reach the model provider directly — they route through **Fastly ARC** (`arc.fastly.app`), the edge control plane for AI traffic. The app authenticates with a per-app **virtual key** (`arc-wisefrog-virtual-key`), never the raw provider key, and ARC records every request's provider, model, token counts, and session — giving per-key attribution and one place to govern AI usage and spend. This is the **app** tier of ARC's three use cases — and a reference **agent tier** is live too: `tools/shopper-agent.js` reasons through ARC on its own `arc-shopper-agent` virtual key and transacts via `/mcp`, showing up as a distinct lane in the ARC dashboard (and in the storefront's Trusted-Agents telemetry). The **builder tier** (coding tools routed through ARC) follows at ARC GA via Passthrough SSO.
 * **Wise Frog Assistant:** An in-store AI assistant on **Gemini 3.5 Flash**, every model call **routed through Fastly ARC** — checks inventory, adds to cart, and completes secure Stripe checkouts; the `/api/agent` endpoint is governed at the edge (see Agentic Commerce below).
 
@@ -72,6 +73,8 @@ State is remote in Google Cloud Storage (`gs://three-dogs-tf-state`), with autom
 * **`infra/telemetry/` — Owner-applied** (`terraform/telemetry`): the BigQuery dataset/table, the `fastly-logging` service account, and its impersonation + `bigquery.dataEditor` bindings. This plane is deliberately **split out of CI** so the deploy bot needs no project-wide IAM or BigQuery admin. It is applied manually (`cd infra/telemetry && terraform apply`) and changes rarely.
 
 > **ARC is control-panel configured, not Terraform-managed.** AI Runtime Control (providers + virtual keys) is set up in the Fastly control panel (Tools → AI Runtime Control) and is superuser-scoped. The app consumes it purely through the injected `ARC_VIRTUAL_KEY` — there is no ARC state in these stacks.
+
+> **Google Tag Gateway is Fastly-platform-managed, not Terraform-managed.** First-party ad-tag routing (`/3dafmetrics` → Google) is provisioned by Fastly's platform out-of-band from these stacks — it rides a separate, Fastly-managed proxy service attached to the domain, not our VCL. `terraform plan` intentionally shows no gateway config on the service (**not drift**), and `fps.goog` routing must **not** be added to `infra/main.tf`. See [`docs/gtg-dependency.md`](docs/gtg-dependency.md).
 
 ---
 
@@ -137,6 +140,7 @@ Apply manually for rapid testing (`cd infra && terraform apply`) or via the Acti
 * `public/`: static assets (images, CSS, client-side JS).
 * `server.js`: Express backend entry point (Wise Frog via ARC, MCP server, Stripe checkout).
 * `tools/`: standalone demo clients — e.g. `shopper-agent.js`, the reference ARC-governed shopping agent. Path-ignored from deploys.
+* `docs/`: presenter & ops docs — `DEMO-RUNBOOK.md`, `demo-day-run-sheet.md`, and `gtg-dependency.md` (Google Tag Gateway dependency + drift guidance).
 * `.github/workflows/`: CI/CD (`deploy.yml`).
 * `Dockerfile`: hardened Node.js container build.
 
