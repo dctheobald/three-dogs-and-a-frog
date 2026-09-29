@@ -57,6 +57,3 @@ _(Note: a "Multi-CDN thought-leadership" deck exists but belongs to a **separate
 
 ## Workstream 6 — Demo-prep tooling
 Skill `3daf-demo-prep` (renamed from `agentops-preflight`), at `.claude/skills/3daf-demo-prep/` in the repo; invoke `/agentops-preflight` ~5 min before presenting the AgentOps dashboard. `preflight.sh` orchestrates; `warmup.sh` drives AI-weighted synthetic traffic (105 requests: 7 user-agents × 3 paths × 5 rounds) with verified BigQuery landing. Run warm-up *after* setting Runtime Governance to warn mode. Must run locally in Claude Code (chat sandbox has no egress).
-
-## Workstream 7 — Recurring ops
-A weekly-digest scheduled task runs Mondays 7am (calendar + Gmail → meetings, key findings, items needing attention). Personal scheduling, deal, and security-flag content stays in that digest, not in this file.
