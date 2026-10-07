@@ -1,6 +1,6 @@
 # 3 Dogs & a Frog — Project Knowledge Base (handoff)
 
-Shared memory across all 3D&aF project chats. Each workstream below is self-contained so a new chat starts current: **read your workstream's section before acting, and update it (and the date below) when you finish work.** Owner: David Theobald, Fastly Field CTO (CDN performance, edge compute, multi-CDN, agentic readiness). Last consolidated: 2026-09-29.
+Shared memory across all 3D&aF project chats. Each workstream below is self-contained so a new chat starts current: **read your workstream's section before acting, and update it (and the date below) when you finish work.** Owner: David Theobald, Fastly Field CTO (CDN performance, edge compute, multi-CDN, agentic readiness). Last consolidated: 2026-10-06.
 
 ## Working conventions (apply to every chat)
 - **C-level tone + Fastly brand** on all customer-facing artifacts. One issue at a time; verify state before acting; test against production (real network / BigQuery / Fastly) before merging.
@@ -38,7 +38,15 @@ ARC (AI Runtime Control) is the edge AI gateway. Every AI caller authenticates w
 
 **Wise Frog runtime surface (corrected 2026-09-15):** Gemini **3.5 Flash** via ARC → **Gemini Developer API** (`generativelanguage.googleapis.com`) — **NOT Vertex AI**. The provider key is a service-account-bound key on `three-dogs-frog-store`, restricted to the Generative Language API. `server.js` default is `ARC_MODEL=gemini/gemini-3.5-flash`. (Supersedes the earlier "Wise Frog uses Vertex AI" note that caused a Vertex-console goose chase — there is no Vertex integration.)
 
-**GCP Gemini 2.5-Flash retirement notice — CLOSED, no action needed.** The notice covers the Gemini Enterprise Agent Platform, not the Developer API, and Wise Frog is already on 3.5 Flash. Verified 2026-09-15: 0 endpoints/models/Agent-Engine agents (us-central1), $0 `aiplatform` spend, 0 `gemini-2.5-flash` logs in 90 days. The project's `aiplatform` + `agentregistry` APIs (the source of the notice) were **disabled 2026-09-15** (clean, no dependents) — re-enable via `gcloud services enable` only if the ARC-GA ADC path later needs Vertex.
+**Google model-retirement notices — one-step triage.** Google keeps emailing "[Action Required] Migrate Gemini X Flash … on Gemini Enterprise (formerly Vertex AI)" naming `three-dogs-frog-store`. These target the Gemini Enterprise / Vertex endpoint, which this project does not use. **Close the notice without action if both of these hold:**
+1. `gcloud services list --enabled --project three-dogs-frog-store | grep -iE 'aiplatform|agentregistry'` returns **empty** (run locally; the chat sandbox has no egress).
+2. `grep -rn ARC_MODEL server.js tools/shopper-agent.js` still shows `gemini/gemini-3.5-flash`, and the notice doesn't name 3.5 Flash. For Developer-API dates, check https://ai.google.dev/gemini-api/docs/deprecations (as of 2026-10-06, 3.5 Flash has no shutdown date announced).
+
+If either check fails (API re-enabled, model changed, or 3.5 Flash named), stop and investigate before closing. The `aiplatform` + `agentregistry` APIs were **disabled 2026-09-15** (clean, no dependents). Re-enable via `gcloud services enable` only if the ARC-GA ADC path later needs Vertex; at that point these notices apply for real.
+
+Notice log (all CLOSED, no action):
+- **2026-09-15 — Gemini 2.5 Flash** (Gemini Enterprise Agent Platform). Verified: 0 endpoints/models/Agent-Engine agents (us-central1), $0 `aiplatform` spend, 0 `gemini-2.5-flash` logs in 90 days. Led to disabling the two APIs.
+- **2026-10-05 — Gemini 3.6 Flash (retires 2026-11-19) and 3.7 Flash (2027-01-28)** on Gemini Enterprise. Recommended targets: 3.8 Flash and 3.5 Flash. Verified 2026-10-06: no 3.6/3.7 references anywhere in the repo; no app/tool code changes since 2026-09-15; both checks above passed (gcloud grep empty). False positive, likely the same broad project targeting as the September notice.
 
 **ARC GA (2026-09-15):** ARC exited beta. Beta was static-key auth only with no in-ARC budget/rate caps; GA adds Passthrough SSO / Google-identity (ADC) auth intended to retire the static API key, plus budget/rate caps. `X-Frog-Agent-Key` is a documented static demo value, hardcoded by design; only `ARC_VIRTUAL_KEY` / `ARC_SHOPPER_KEY` are real creds.
 
