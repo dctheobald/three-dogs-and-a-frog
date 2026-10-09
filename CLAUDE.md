@@ -1,6 +1,6 @@
 # 3 Dogs & a Frog — Project Knowledge Base (handoff)
 
-Shared memory across all 3D&aF project chats. Each workstream below is self-contained so a new chat starts current: **read your workstream's section before acting, and update it (and the date below) when you finish work.** Owner: David Theobald, Fastly Field CTO (CDN performance, edge compute, multi-CDN, agentic readiness). Last consolidated: 2026-10-06.
+Shared memory across all 3D&aF project chats. Each workstream below is self-contained so a new chat starts current: **read your workstream's section before acting, and update it (and the date below) when you finish work.** Owner: David Theobald, Fastly Field CTO (CDN performance, edge compute, multi-CDN, agentic readiness). Last consolidated: 2026-10-09.
 
 ## Working conventions (apply to every chat)
 - **C-level tone + Fastly brand** on all customer-facing artifacts. One issue at a time; verify state before acting; test against production (real network / BigQuery / Fastly) before merging.
@@ -14,8 +14,10 @@ Shared memory across all 3D&aF project chats. Each workstream below is self-cont
 - Built with: Claude Code 2.1.220, Fastly CLI 15.4.0, Fastly Agent Toolkit (project-scope, committed `27327ce`, unpushed), Fastly MCP (read-only, `github.com/fastly/mcp`).
 - Fastly: CDN service `wBCY7mB7jg6n24pJqN5q40`; MCP registered via `claude mcp add-json` (flag-form `add` fails on this build). API token `global:read`, named `claude-code-mcp-readonly`, restricted to the 3D&aF service, expires **2026-10-25**, lives only in root `.envrc`. At `global:read`, VCL-level API endpoints return 403 — use `terraform plan` to confirm VCL config.
 - Live edge: `three-dogs-frog-store-production`, active version 55 (heavy iteration — expect drift vs `main.tf`).
-- Terraform: v9.4.0 Fastly provider; state in `infra/`; `infra/main.tf` primary; `infra/agentops-telemetry.tf` for BigQuery. Fully reconciled, zero drift via CI `terraform plan`.
+- Terraform: v9.4.0 Fastly provider; remote state in GCS bucket `gs://three-dogs-tf-state` (the `backend "gcs"` blocks); `infra/main.tf` is the primary edge stack; `infra/telemetry/` is a separate, Owner-applied BigQuery stack with its own state prefix. CI uses `hashicorp/setup-terraform@v4` without a pinned version, so every run pulls the latest Terraform. Fully reconciled, zero drift via CI `terraform plan`.
 - GCP: Compute Engine origin; BigQuery `three-dogs-frog-store.agentops`; Gemini Developer API (Wise Frog — see Workstream 3). Region `us-central1`.
+- **Google Cloud notices:** Gemini model-retirement emails have their own triage and log in Workstream 3. Other GCP notices are logged here, all CLOSED with no action:
+  - **2026-10-08 — Cloud Storage client SDKs enable end-to-end CRC32C checksums by default** (product update, not a deprecation; no breaking changes). Verified 2026-10-09: the app uses no Cloud Storage SDK (`package.json` has no `@google-cloud/*` dependency), and Fastly→BigQuery logging doesn't use GCS. The only GCS user is the Terraform state backend, which goes through the Go SDK built into the Terraform binary. Unpinned CI Terraform picks up newer SDKs automatically, and local Terraform does too once upgraded. The new `object_checksummed_write_count` metric is optional and not worth adding for the state bucket alone.
 - CI/CD: GitHub Actions — parallel `terraform plan` + `docker build` on PRs; deploy on push to `main`.
 - Other: Looker Studio (AgentOps dashboard); GTM container `GTM-MLHMZRHK`; Atlassian Rovo (keyword search works; page lookups need numeric page ID, not URL slug). Canonical architecture source: `docs/architecture.dot` (`root/architecture.png` is a stale render).
 - **Open next step:** read-only recon of live v55 (VCL, backends, rate limiter, dictionaries, TLS) → map against slide 31's four demos.
