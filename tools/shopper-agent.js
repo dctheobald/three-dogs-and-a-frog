@@ -22,7 +22,7 @@ const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
 
 const ARC_BASE_URL    = process.env.ARC_BASE_URL    || 'https://arc.fastly.app/v1';
-const ARC_MODEL       = process.env.ARC_MODEL       || 'gemini/gemini-3.5-flash';
+const ARC_MODEL       = process.env.ARC_MODEL       || 'gemini/gemini-3.6-flash';
 const ARC_SHOPPER_KEY = process.env.ARC_SHOPPER_KEY;                 // the arc-shopper-agent virtual key
 const MCP_URL         = process.env.MCP_URL         || 'https://www.3dogsandafrog.com/mcp';
 const FROG_AGENT_KEY  = process.env.FROG_AGENT_KEY  || 'sk-frog-demo-2026';
@@ -71,7 +71,7 @@ async function main() {
     guard++;
     const res = await ai.chat.completions.create({ model: ARC_MODEL, messages, tools: openaiTools, tool_choice: 'auto' });
     const msg = res.choices[0].message;
-    messages.push(msg);   // echo the assistant turn (tool_calls + reasoning_details) back - 3.5-flash is a reasoning model
+    messages.push(msg);   // echo the assistant turn (tool_calls + reasoning_details) back - 3.6-flash is a reasoning model
 
     if (!msg.tool_calls || msg.tool_calls.length === 0) {
       console.log(`\nAgent: ${msg.content || '(no further action)'}\n`);
