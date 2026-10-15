@@ -83,10 +83,10 @@ app.use(express.json());
 // provider key lives only in ARC's provider config.
 //   ARC_VIRTUAL_KEY : the ARC virtual key issued for the Wise Frog (arc-wisefrog-virtual-key)
 //   ARC_BASE_URL    : https://arc.fastly.app/v1  (default)
-//   ARC_MODEL       : gemini/gemini-3.5-flash    (default)
+//   ARC_MODEL       : gemini/gemini-3.6-flash    (default)
 
 const ARC_BASE_URL = process.env.ARC_BASE_URL || 'https://arc.fastly.app/v1';
-const ARC_MODEL = process.env.ARC_MODEL || 'gemini/gemini-3.5-flash';
+const ARC_MODEL = process.env.ARC_MODEL || 'gemini/gemini-3.6-flash';
 const ARC_VIRTUAL_KEY = process.env.ARC_VIRTUAL_KEY;
 
 if (ARC_VIRTUAL_KEY) {
@@ -184,7 +184,7 @@ app.post('/api/agent', async (req, res) => {
         });
         let msg = completion.choices[0].message;
 
-        // Tool-call loop. gemini-3.5-flash is a reasoning model and chains tool calls,
+        // Tool-call loop. gemini-3.6-flash is a reasoning model and chains tool calls,
         // so we echo each assistant turn (tool_calls + any reasoning_details ride along
         // on the message object) back into the history, answer every tool_call_id, and
         // re-ask until the model returns plain text. Guard caps the round-trips.
