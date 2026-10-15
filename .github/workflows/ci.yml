@@ -26,7 +26,7 @@ permissions:
 jobs:
   docker-build:
     name: Docker build (no push)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned 2026-10-15: ubuntu-latest moves to Ubuntu 26 from 2026-10-19; move deliberately after the 10/21 demo
     steps:
       - uses: actions/checkout@v7
       - name: Build image (build only — never pushed)
@@ -34,7 +34,7 @@ jobs:
 
   terraform-plan:
     name: Terraform plan (no apply)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned 2026-10-15: ubuntu-latest moves to Ubuntu 26 from 2026-10-19; move deliberately after the 10/21 demo
     steps:
       - uses: actions/checkout@v7
 
