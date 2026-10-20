@@ -73,22 +73,22 @@ Error/fetch/deliver snippets render the synthetic catalog (900), agent-gate 403,
 
 ## 5. Live knobs you'll touch
 
-Run edge CLI commands from `infra/` (direnv sets `FASTLY_API_TOKEN` + `FASTLY_SERVICE_ID`). The two dictionaries are **versionless** — entry changes take effect in ~1–2 minutes without a deploy.
+Run edge CLI commands from `infra/` (direnv sets `FASTLY_API_KEY`, `FASTLY_API_TOKEN` + `FASTLY_SERVICE_ID`). **Prefix write commands with `FASTLY_API_TOKEN="$FASTLY_API_KEY"`:** the root `.envrc` sets `FASTLY_API_TOKEN` to the read-only MCP token, so unprefixed dictionary updates return 403 (found 2026-10-20). `FASTLY_API_KEY` is the write-capable Terraform token. Read commands (`list`) work as-is. The two dictionaries are **versionless** — entry changes take effect in ~1–2 minutes without a deploy.
 
 ### 5.1 Governance mode — shadow <-> enforce
 `frog_config` key `enforce` (`frog_config` dictionary id `PNGoE9Xbgz2mEu4SYAv5G4`):
 
 ```bash
 # enforce = block untrusted bots on /api/agent
-fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=true
+FASTLY_API_TOKEN="$FASTLY_API_KEY" fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=true
 # shadow  = identify only, nothing blocked
-fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=false
+FASTLY_API_TOKEN="$FASTLY_API_KEY" fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=false
 ```
 
 Open your talk in **shadow** if you want to flip to **enforce** live on stage. Allow ~1–2 min for propagation before demonstrating the change.
 
 ### 5.2 Demo agent key
-`frog_config` key `agent_key` (currently `sk-frog-demo-2026`). A request presenting `X-Frog-Agent-Key: <that value>` is treated as a verified agent for `/catalog` and `/mcp`. Rotate anytime via the same `dictionary-entry update`.
+`frog_config` key `agent_key` (currently `sk-frog-demo-2026`). A request presenting `X-Frog-Agent-Key: <that value>` is treated as a verified agent for `/catalog` and `/mcp`. Rotate anytime via the same `dictionary-entry update` (with the `FASTLY_API_TOKEN="$FASTLY_API_KEY"` prefix).
 
 ### 5.3 Product catalog
 Edit `data/products.json` and deploy. `stock_qty` drives everything: `0` -> Out of Stock (checkout refused), `1–5` -> Low Stock, `>5` -> In Stock. Every purchase path (human cart, Wise Frog, MCP) validates stock, so out-of-stock/over-quantity orders are refused (409) and the storefront shows a disabled "Sold Out" button.

@@ -2,7 +2,7 @@
 
 *Deterministic sequence for the "Performance to Profit" demo. Order matters: the Runtime Governance beat (slide 31) only lands if the Govern lane opens empty. Keep this on a second screen.*
 
-**Refs:** Fastly service `wBCY7mB7jg6n24pJqN5q40` · `frog_config` dict `PNGoE9Xbgz2mEu4SYAv5G4` · Looker "Edge Traffic Classification" (one page-level time control → Last 60 min). Governance commands run from `infra/` (direnv sets `FASTLY_API_TOKEN` + `FASTLY_SERVICE_ID`); warm-up commands run from the repo root.
+**Refs:** Fastly service `wBCY7mB7jg6n24pJqN5q40` · `frog_config` dict `PNGoE9Xbgz2mEu4SYAv5G4` · Looker "Edge Traffic Classification" (one page-level time control → Last 60 min). Governance commands run from `infra/`. **Write commands need the `FASTLY_API_TOKEN="$FASTLY_API_KEY"` prefix:** in `infra/`, the root `.envrc` sets `FASTLY_API_TOKEN` to the read-only MCP token, so an unprefixed update fails with 403 (found 2026-10-20). `list` works without it. Warm-up commands run from the repo root.
 
 ---
 
@@ -11,7 +11,7 @@
 **A1 · Open governance in shadow.** From `infra/`:
 
 ```
-fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=false
+FASTLY_API_TOKEN="$FASTLY_API_KEY" fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=false
 ```
 
 Wait ~1–2 min to propagate, then confirm it reads `false`:
@@ -52,7 +52,7 @@ Equivalent: `/3daf-demo-prep` → Full prep → choose **shadow** when it asks.
 **B2 · Flip to enforce, live.** From `infra/`:
 
 ```
-fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=true
+FASTLY_API_TOKEN="$FASTLY_API_KEY" fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=true
 ```
 
 Talk through the value for ~1–2 min while it propagates — do **not** demo the change in the first few seconds.
@@ -72,7 +72,7 @@ Refresh Looker — **Bots Blocked** jumps from 0. The same untrusted agents wave
 Return to shadow so the next run opens clean:
 
 ```
-fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=false
+FASTLY_API_TOKEN="$FASTLY_API_KEY" fastly service dictionary-entry update --dictionary-id=PNGoE9Xbgz2mEu4SYAv5G4 --key=enforce --value=false
 ```
 
 ---
